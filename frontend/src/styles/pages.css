@@ -1,0 +1,853 @@
+/* ----------------------------------------------------------------------
+   Accueil
+   ---------------------------------------------------------------------- */
+.indicateurs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .indicateurs {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+  }
+}
+
+.tache {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--bordure);
+  transition: background var(--transition);
+}
+.tache:last-child {
+  border-bottom: 0;
+}
+.tache:hover {
+  background: var(--peche-claire);
+}
+.tache__case {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  accent-color: var(--principale);
+  cursor: pointer;
+}
+.tache__case:disabled {
+  cursor: not-allowed;
+}
+.tache__corps {
+  flex: 1;
+  min-width: 0;
+}
+.tache__libelle {
+  font-weight: 500;
+}
+.tache__libelle a {
+  color: inherit;
+}
+.tache__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+}
+.tache--faite .tache__libelle {
+  text-decoration: line-through;
+  color: var(--texte-discret);
+}
+
+/* ----------------------------------------------------------------------
+   Cartes de liste (mobile) : une carte par commande, vente ou article
+   ---------------------------------------------------------------------- */
+.liste-cartes {
+  display: flex;
+  flex-direction: column;
+}
+.carte-ligne {
+  display: block;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bordure);
+  color: inherit;
+  transition: background var(--transition);
+}
+.carte-ligne:last-child {
+  border-bottom: 0;
+}
+.carte-ligne:hover,
+.carte-ligne:active {
+  background: var(--peche-claire);
+  text-decoration: none;
+}
+.carte-ligne__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.carte-ligne__titre {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.carte-ligne__sous {
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+}
+.carte-ligne__droite {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.carte-ligne__montant {
+  font-weight: 600;
+  font-size: 1.05rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.stats-mini {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--bordure);
+}
+.stats-mini__libelle {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--texte-discret);
+}
+.stats-mini__valeur {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.barre-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--fond-doux);
+  border-top: 1px solid var(--bordure);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.barre-total span:first-child {
+  font-weight: 400;
+  color: var(--texte-secondaire);
+}
+
+.ligne-article {
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bordure);
+}
+.ligne-article:last-child {
+  border-bottom: 0;
+}
+.ligne-article__corps {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ligne-article__rang {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+}
+
+/* ----------------------------------------------------------------------
+   Fiche d'une commande
+   ---------------------------------------------------------------------- */
+.fiche-entete {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.fiche-entete__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.875rem;
+  color: var(--texte-secondaire);
+}
+.fiche-entete__meta strong {
+  color: var(--texte);
+  font-weight: 500;
+}
+.meta {
+  display: inline-flex;
+  gap: 4px;
+  align-items: baseline;
+}
+@media (max-width: 767px) {
+  /* Sur mobile, les infos de l'en-tête passent en grille libellé / valeur */
+  .fiche-entete__meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+  }
+  .fiche-entete__meta .meta {
+    flex-direction: column;
+    gap: 0;
+  }
+  .fiche-entete__meta .meta__libelle {
+    font-size: 0.75rem;
+  }
+  .fiche-entete__meta .taux {
+    justify-self: start;
+  }
+}
+.taux {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--rayon-pilule);
+  background: var(--fond-doux);
+  border: 1px solid var(--bordure);
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+  font-variant-numeric: tabular-nums;
+}
+
+.recap-collant {
+  position: sticky;
+  top: var(--hauteur-barre);
+  z-index: 40;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 calc(-1 * var(--gouttiere)) 16px;
+  padding: 10px var(--gouttiere);
+  background: var(--surface);
+  border-bottom: 1px solid var(--bordure);
+}
+.recap-collant__item {
+  min-width: 0;
+}
+.recap-collant__libelle {
+  font-size: 0.7rem;
+  color: var(--texte-discret);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recap-collant__valeur {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (min-width: 768px) {
+  .recap-collant {
+    display: none;
+  }
+}
+
+.bandeau-recap {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .bandeau-recap {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+}
+@media (min-width: 1100px) {
+  .bandeau-recap {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Tarification : tableau éditable, cartes sur mobile */
+.tarif__barre {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bordure);
+  background: var(--fond-doux);
+}
+.tarif__barre .champ {
+  min-width: 180px;
+}
+.tarif .saisie {
+  min-height: 36px;
+  padding: 4px 10px;
+}
+.tarif__cellule {
+  transition: background 200ms ease;
+}
+.tarif__cellule--modifiee {
+  animation: surligner 1200ms ease;
+}
+@keyframes surligner {
+  0% {
+    background: var(--peche);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.tarif__produit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.tarif__produit-nom {
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .tarif .tableau--cartes td {
+    padding: 4px 16px;
+  }
+  .tarif .tableau--cartes td .saisie--suffixe,
+  .tarif .tableau--cartes td .saisie {
+    max-width: 160px;
+  }
+  .tarif__produit {
+    width: 100%;
+  }
+}
+
+.ajout-ligne {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--bordure);
+  background: var(--fond-doux);
+}
+@media (min-width: 768px) {
+  .ajout-ligne {
+    grid-template-columns: 2fr 1fr 1fr auto;
+    align-items: end;
+  }
+}
+
+/* Listes simples (frais, boosts) */
+.liste-elements > * {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--bordure);
+}
+.liste-elements > *:last-child {
+  border-bottom: 0;
+}
+.element {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.element__corps {
+  flex: 1;
+  min-width: 0;
+}
+.element__titre {
+  font-weight: 500;
+}
+.element__meta {
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+}
+.element__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.boost {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bordure);
+}
+.boost:last-child {
+  border-bottom: 0;
+}
+.boost__frais {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: var(--rayon-champ);
+  background: var(--fond-doux);
+}
+.boost__frais .element {
+  padding: 4px 0;
+}
+
+/* ----------------------------------------------------------------------
+   Produits
+   ---------------------------------------------------------------------- */
+.grille-produits {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (min-width: 640px) {
+  .grille-produits {
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 16px;
+  }
+}
+.carte-produit {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: inherit;
+}
+.carte-produit:hover {
+  text-decoration: none;
+}
+.carte-produit .img-produit--grande {
+  border-radius: 0;
+}
+.carte-produit__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px 14px;
+}
+.carte-produit__nom {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.carte-produit__prix {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.875rem;
+}
+
+.fiche-produit {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 768px) {
+  .fiche-produit {
+    grid-template-columns: 280px 1fr;
+    align-items: start;
+  }
+}
+.definitions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px 16px;
+  margin: 0;
+}
+@media (min-width: 480px) {
+  .definitions {
+    grid-template-columns: minmax(0, max-content) 1fr;
+    gap: 8px 16px;
+  }
+}
+.definitions dd + dt {
+  margin-top: 6px;
+}
+@media (min-width: 480px) {
+  .definitions dd + dt {
+    margin-top: 0;
+  }
+}
+.definitions dt {
+  color: var(--texte-secondaire);
+  font-size: 0.875rem;
+}
+.definitions dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.apercu-image {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ----------------------------------------------------------------------
+   Ventes
+   ---------------------------------------------------------------------- */
+.ligne-vente {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--bordure);
+}
+.ligne-vente:last-child {
+  border-bottom: 0;
+}
+@media (min-width: 900px) {
+  .ligne-vente {
+    grid-template-columns: 2fr 110px 160px 150px auto;
+    align-items: end;
+  }
+}
+.total-vente {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 20px;
+  background: var(--fond-doux);
+  border-top: 1px solid var(--bordure);
+}
+.total-vente__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.total-vente__ligne--total {
+  font-size: 1.15rem;
+  font-weight: 600;
+  padding-top: 6px;
+  border-top: 1px solid var(--bordure);
+}
+
+.selecteur {
+  position: relative;
+}
+.selecteur__liste {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  max-height: 280px;
+  overflow: auto;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-carte);
+  box-shadow: var(--ombre-haute);
+}
+.selecteur__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+}
+.selecteur__option:hover,
+.selecteur__option[data-actif='true'] {
+  background: var(--peche-claire);
+}
+.selecteur__option small {
+  display: block;
+  color: var(--texte-secondaire);
+}
+
+/* ----------------------------------------------------------------------
+   Publications : calendrier
+   ---------------------------------------------------------------------- */
+.calendrier__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.calendrier__mois {
+  font-weight: 600;
+  text-transform: capitalize;
+  min-width: 150px;
+}
+.calendrier__grille {
+  display: grid;
+  /* minmax(0, 1fr) : une publication au libellé long ne doit pas élargir sa colonne */
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--bordure);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-carte);
+  overflow: hidden;
+}
+.calendrier__jour-nom {
+  padding: 8px 4px;
+  background: var(--fond-doux);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--texte-secondaire);
+  text-align: center;
+  text-transform: uppercase;
+}
+.calendrier__jour {
+  min-width: 0;
+  min-height: 72px;
+  padding: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.calendrier__jour:hover {
+  background: var(--peche-claire);
+}
+.calendrier__jour--autre {
+  background: var(--fond-doux);
+  color: var(--texte-discret);
+}
+.calendrier__jour--aujourdhui .calendrier__numero {
+  background: var(--principale);
+  color: #fff;
+}
+.calendrier__numero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.calendrier__publications {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+.pub-mini {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pub-mini--a_faire {
+  background: var(--attention-fond);
+  color: var(--attention);
+}
+.pub-mini--creee {
+  background: var(--info-fond);
+  color: var(--info);
+}
+.pub-mini--publiee {
+  background: var(--succes-fond);
+  color: var(--succes);
+}
+.pub-mini svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+.calendrier__plus {
+  font-size: 0.7rem;
+  color: var(--texte-secondaire);
+  padding-left: 6px;
+}
+@media (min-width: 900px) {
+  .calendrier__jour {
+    min-height: 110px;
+  }
+  .pub-mini {
+    font-size: 0.78rem;
+  }
+}
+
+.semaine {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  .semaine {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+.semaine__jour {
+  min-height: 120px;
+}
+.semaine__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--bordure);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.semaine__entete--aujourdhui {
+  color: var(--principale);
+}
+.semaine__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.pub-carte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-champ);
+  background: var(--surface);
+  text-align: left;
+  transition: border-color var(--transition), background var(--transition);
+}
+.pub-carte:hover {
+  border-color: var(--peche);
+  background: var(--peche-claire);
+}
+.pub-carte__heure {
+  font-size: 0.75rem;
+  color: var(--texte-secondaire);
+}
+.pub-carte__nom {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.liens-pub {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.lien-icone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+/* Cartes de publication (liste) */
+.carte-pub {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+}
+.carte-pub__visuel {
+  position: relative;
+}
+.carte-pub__statut {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+}
+.apercu-lien {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--peche-claire);
+}
+.apercu-lien img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.apercu-lien--vide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--peche);
+}
+.apercu-lien--vide span {
+  color: var(--texte-discret);
+}
+
+/* ----------------------------------------------------------------------
+   Statistiques
+   ---------------------------------------------------------------------- */
+.graphique {
+  width: 100%;
+  height: 280px;
+}
+.graphique--haut {
+  height: 340px;
+}
+.infobulle {
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-carte);
+  box-shadow: var(--ombre-haute);
+  font-size: 0.85rem;
+}
+.infobulle strong {
+  display: block;
+  margin-bottom: 4px;
+}
+.legende {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 0.85rem;
+  color: var(--texte-secondaire);
+}
+.legende__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legende__couleur {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+/* ----------------------------------------------------------------------
+   Paramètres
+   ---------------------------------------------------------------------- */
+.parametres {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 900px) {
+  .parametres {
+    grid-template-columns: 220px 1fr;
+    align-items: start;
+  }
+  .parametres__menu {
+    position: sticky;
+    top: calc(var(--hauteur-barre) + 24px);
+  }
+}
+.parametres__menu {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+}
+@media (min-width: 900px) {
+  .parametres__menu {
+    flex-direction: column;
+  }
+}

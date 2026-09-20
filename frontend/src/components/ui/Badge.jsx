@@ -1,0 +1,57 @@
+import { Truck, PackageCheck, AlertTriangle, Circle, PenLine, CheckCircle2, Lock, FileEdit } from 'lucide-react';
+import { LIBELLES_STATUT_ACHAT, LIBELLES_STATUT_PUBLICATION, nombre } from '../../lib/format.js';
+
+/** ton : neutre | succes | attention | danger | info | principal */
+export function Badge({ ton = 'neutre', icone: Icone, children, className = '' }) {
+  return (
+    <span className={`badge ${ton !== 'neutre' ? `badge--${ton}` : ''} ${className}`}>
+      {Icone && <Icone aria-hidden="true" />}
+      {children}
+    </span>
+  );
+}
+
+const STATUTS_ACHAT = {
+  en_route: { ton: 'info', icone: Truck },
+  recue: { ton: 'succes', icone: PackageCheck },
+  en_retard: { ton: 'danger', icone: AlertTriangle },
+};
+
+export function BadgeStatutAchat({ statut }) {
+  const s = STATUTS_ACHAT[statut] ?? {};
+  return (
+    <Badge ton={s.ton} icone={s.icone}>
+      {LIBELLES_STATUT_ACHAT[statut] ?? statut}
+    </Badge>
+  );
+}
+
+const STATUTS_PUBLICATION = {
+  a_faire: { ton: 'attention', icone: Circle },
+  creee: { ton: 'info', icone: PenLine },
+  publiee: { ton: 'succes', icone: CheckCircle2 },
+};
+
+export function BadgeStatutPublication({ statut }) {
+  const s = STATUTS_PUBLICATION[statut] ?? {};
+  return (
+    <Badge ton={s.ton} icone={s.icone}>
+      {LIBELLES_STATUT_PUBLICATION[statut] ?? statut}
+    </Badge>
+  );
+}
+
+export function BadgeStock({ restant, seuil = 2 }) {
+  if (restant === null || restant === undefined) return <Badge>—</Badge>;
+  if (restant <= 0) return <Badge ton="danger" icone={AlertTriangle}>Rupture</Badge>;
+  if (restant <= seuil) return <Badge ton="attention">Stock bas : {nombre(restant)}</Badge>;
+  return <Badge ton="succes">{nombre(restant)} en stock</Badge>;
+}
+
+export function BadgeFigement({ fige }) {
+  return fige ? (
+    <Badge ton="succes" icone={Lock}>Figée</Badge>
+  ) : (
+    <Badge ton="attention" icone={FileEdit}>Brouillon</Badge>
+  );
+}
