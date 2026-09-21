@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Lock, Save, Package, PackagePlus } from 'lucide-react';
+import { Plus, Trash2, Lock, Save, Package, PackagePlus, Percent } from 'lucide-react';
 import { Achats, Produits, Categories, messageErreur } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
@@ -20,8 +20,11 @@ const texte = (v) => (v === null || v === undefined ? '' : String(v));
 
 /**
  * Modèle d'une ligne en brouillon : le prix de vente fait foi, la marge en
- * découle. `margeSaisie` ne porte que le texte tapé pendant l'édition de la
- * marge, pour ne pas reformater sous les doigts de l'utilisateur.
+ * découle. La marge et le prix de vente ne sont pas recalculés à chaque
+ * frappe : on tape un nombre entier puis Entrée (ou on quitte le champ) pour
+ * valider. `margeSaisie` garde la marge validée telle que tapée, pour ne pas la
+ * reformater ; `prixVenteSaisi` porte le prix de vente en cours de frappe, non
+ * encore validé.
  */
 const depuisServeur = (l) => ({
   id: l.id,
@@ -30,6 +33,7 @@ const depuisServeur = (l) => ({
   prix: texte(l.prix),
   prixVenteAr: texte(l.prixVenteAr),
   margeSaisie: null,
+  prixVenteSaisi: null,
   stockRestant: l.stockRestant,
   sale: false,
 });
@@ -45,7 +49,22 @@ function fusionner(locales, serveur) {
 const margeAffichee = (ligne, taux) => {
   if (ligne.margeSaisie !== null) return ligne.margeSaisie;
   const m = margeDepuisPrixVente(prixAchatAr(ligne.prix, taux), ligne.prixVenteAr);
-  return m === null ? '' : texte(arrondir(m, 1));
+  return m === null ? '' : texte(arrondir(m, 0));
+};
+
+const prixVenteAffiche = (ligne) => (ligne.prixVenteSaisi !== null ? ligne.prixVenteSaisi : ligne.prixVenteAr);
+
+/** Applique une marge à une ligne : le prix de vente en découle, arrondi à l'Ariary. */
+const appliquerMarge = (ligne, marge, taux) => {
+  const pv = prixVenteDepuisMarge(prixAchatAr(ligne.prix, taux), marge);
+  return { ...ligne, sale: true, margeSaisie: marge, prixVenteSaisi: null, prixVenteAr: pv === null ? '' : texte(arrondir(pv, 0)) };
+};
+
+/** Entrée valide la saisie sans soumettre de formulaire. */
+const surEntree = (valider) => (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  valider();
 };
 
 /** Écran de tarification : marge et prix de vente liés, brouillon puis figement. */
@@ -56,6 +75,7 @@ export function Tarification({ achat, setAchat }) {
   const [sommeAr, setSommeAr] = useState(texte(achat.sommeAr));
   const [sommeTotale, setSommeTotale] = useState(texte(achat.sommeTotale));
   const [sommeArSale, setSommeArSale] = useState(false);
+  const [margeGlobale, setMargeGlobale] = useState('');
   const [achatVu, setAchatVu] = useState(achat);
   const [modifiee, setModifiee] = useState(null); // { id, champ, t } : dernière cellule modifiée, surlignée
   const [confirmation, setConfirmation] = useState(false);
@@ -90,24 +110,40 @@ export function Tarification({ achat, setAchat }) {
 
   const marquer = (id, champ) => setModifiee({ id, champ, t: Date.now() });
 
+  // Quantité et prix d'achat : recalcul en direct, la marge redevient une valeur dérivée
   const changerLigne = (id, champ, valeur) => {
-    setLignes((liste) =>
-      liste.map((l) => {
-        if (l.id !== id) return l;
-        const maj = { ...l, sale: true };
-        if (champ === 'margePct') {
-          maj.margeSaisie = valeur;
-          const pv = prixVenteDepuisMarge(prixAchatAr(l.prix, taux), valeur);
-          maj.prixVenteAr = pv === null ? '' : texte(arrondir(pv, 0));
-        } else {
-          // Quantité, prix ou prix de vente : la marge redevient une valeur dérivée
-          maj[champ] = valeur;
-          maj.margeSaisie = null;
-        }
-        return maj;
-      }),
-    );
+    setLignes((liste) => liste.map((l) => (l.id === id ? { ...l, [champ]: valeur, margeSaisie: null, sale: true } : l)));
     marquer(id, champ);
+  };
+
+  // Marge et prix de vente : la frappe est seulement mémorisée, le calcul attend Entrée ou la perte de focus
+  const saisirLigne = (id, champ, valeur) => {
+    const cle = champ === 'margePct' ? 'margeSaisie' : 'prixVenteSaisi';
+    setLignes((liste) => liste.map((l) => (l.id === id ? { ...l, [cle]: valeur } : l)));
+  };
+
+  const validerLigne = (id, champ) => {
+    const ligne = lignes.find((l) => l.id === id);
+    if (!ligne) return;
+    if (champ === 'margePct') {
+      if (ligne.margeSaisie === null) return;
+      setLignes((liste) => liste.map((l) => (l.id === id ? appliquerMarge(l, l.margeSaisie, taux) : l)));
+      marquer(id, 'prixVenteAr');
+      return;
+    }
+    if (ligne.prixVenteSaisi === null) return;
+    // Le prix de vente fait foi : la marge redevient une valeur dérivée
+    setLignes((liste) =>
+      liste.map((l) => (l.id === id ? { ...l, sale: true, prixVenteAr: l.prixVenteSaisi, prixVenteSaisi: null, margeSaisie: null } : l)),
+    );
+    marquer(id, 'margePct');
+  };
+
+  // Marge globale : une même marge appliquée à toutes les lignes
+  const appliquerMargeGlobale = () => {
+    if (!taux || margeGlobale === '' || lignes.length === 0) return;
+    setLignes((liste) => liste.map((l) => appliquerMarge(l, margeGlobale, taux)));
+    marquer('*', 'prixVenteAr');
   };
 
   const changerSommeAr = (valeur) => {
@@ -176,9 +212,9 @@ export function Tarification({ achat, setAchat }) {
     }
   };
 
-  const classeCellule = (id, champ) =>
-    `tarif__cellule ${modifiee?.id === id && modifiee?.champ === champ ? 'tarif__cellule--modifiee' : ''}`;
-  const cleCellule = (id, champ) => (modifiee?.id === id && modifiee?.champ === champ ? `${champ}-${modifiee.t}` : champ);
+  const estModifiee = (id, champ) => (modifiee?.id === id || modifiee?.id === '*') && modifiee?.champ === champ;
+  const classeCellule = (id, champ) => `tarif__cellule ${estModifiee(id, champ) ? 'tarif__cellule--modifiee' : ''}`;
+  const cleCellule = (id, champ) => (estModifiee(id, champ) ? `${champ}-${modifiee.t}` : champ);
 
   const colonneProduit = {
     cle: 'produit',
@@ -282,7 +318,19 @@ export function Tarification({ achat, setAchat }) {
       align: 'droite',
       rendu: (l) => (
         <div key={cleCellule(l.id, 'margePct')} className={classeCellule(l.id, 'margePct')}>
-          <SaisieMontant suffixe="%" min={undefined} value={margeAffichee(l, taux)} onChange={(e) => changerLigne(l.id, 'margePct', e.target.value)} aria-label={`Marge de ${l.produit.nom}`} disabled={!taux} style={{ width: 110 }} />
+          <SaisieMontant
+            suffixe="%"
+            min={undefined}
+            step="1"
+            inputMode="numeric"
+            value={margeAffichee(l, taux)}
+            onChange={(e) => saisirLigne(l.id, 'margePct', e.target.value)}
+            onKeyDown={surEntree(() => validerLigne(l.id, 'margePct'))}
+            onBlur={() => validerLigne(l.id, 'margePct')}
+            aria-label={`Marge de ${l.produit.nom} (Entrée pour calculer le prix de vente)`}
+            disabled={!taux}
+            style={{ width: 110 }}
+          />
         </div>
       ),
     },
@@ -292,7 +340,17 @@ export function Tarification({ achat, setAchat }) {
       align: 'droite',
       rendu: (l) => (
         <div key={cleCellule(l.id, 'prixVenteAr')} className={classeCellule(l.id, 'prixVenteAr')}>
-          <SaisieMontant suffixe="Ar" value={l.prixVenteAr} onChange={(e) => changerLigne(l.id, 'prixVenteAr', e.target.value)} aria-label={`Prix de vente de ${l.produit.nom}`} style={{ width: 150 }} />
+          <SaisieMontant
+            suffixe="Ar"
+            step="1"
+            inputMode="numeric"
+            value={prixVenteAffiche(l)}
+            onChange={(e) => saisirLigne(l.id, 'prixVenteAr', e.target.value)}
+            onKeyDown={surEntree(() => validerLigne(l.id, 'prixVenteAr'))}
+            onBlur={() => validerLigne(l.id, 'prixVenteAr')}
+            aria-label={`Prix de vente de ${l.produit.nom} (Entrée pour calculer la marge)`}
+            style={{ width: 150 }}
+          />
         </div>
       ),
     },
@@ -320,6 +378,25 @@ export function Tarification({ achat, setAchat }) {
           <div className="petit secondaire">
             <div>Taux : <strong className="tabulaire">{formatTaux(taux)}</strong></div>
           </div>
+          <Champ libelle="Marge pour toutes les lignes (%)" aide={taux ? 'Entrée pour appliquer à toutes les lignes' : 'Renseignez d’abord la somme payée'}>
+            {(id) => (
+              <div className="flex" style={{ gap: 6 }}>
+                <SaisieMontant
+                  id={id}
+                  suffixe="%"
+                  min={undefined}
+                  step="1"
+                  inputMode="numeric"
+                  value={margeGlobale}
+                  onChange={(e) => setMargeGlobale(e.target.value)}
+                  onKeyDown={surEntree(appliquerMargeGlobale)}
+                  disabled={!taux}
+                  style={{ width: 110 }}
+                />
+                <Bouton icone={Percent} onClick={appliquerMargeGlobale} disabled={!taux || margeGlobale === '' || lignes.length === 0} aria-label="Appliquer la marge à toutes les lignes" title="Appliquer à toutes les lignes" />
+              </div>
+            )}
+          </Champ>
           {sale && <span className="badge badge--attention pousser">Modifications non enregistrées</span>}
         </div>
 

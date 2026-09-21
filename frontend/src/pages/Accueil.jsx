@@ -124,7 +124,7 @@ export function Accueil() {
               <Indicateur libelle="Tâches du jour" valeur={nombre(taches.length)} sous={taches.filter((t) => t.enRetard).length ? `${taches.filter((t) => t.enRetard).length} en retard` : 'À jour'} />
             </div>
 
-            <div className="grille grille-2" style={{ alignItems: 'start' }}>
+            <div className="accueil__grille">
               <Carte titre="Tâches du jour" nu>
                 {taches.length === 0 ? (
                   <EtatVide icone={CheckCircle2} titre="Rien à faire aujourd'hui" description="Les publications, réceptions et ruptures apparaîtront ici." />
@@ -133,7 +133,7 @@ export function Accueil() {
                 )}
               </Carte>
 
-              <Carte titre="À surveiller" nu>
+              <Carte titre="À surveiller" nu className="accueil__surveiller">
                 {aSurveiller.length === 0 ? (
                   <EtatVide icone={Bell} titre="Rien à signaler" />
                 ) : (
