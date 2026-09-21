@@ -13,11 +13,12 @@ import { Confirmation } from '../../components/ui/Modale.jsx';
 import { FormulaireAchat } from './FormulaireAchat.jsx';
 import { Tarification } from './Tarification.jsx';
 import { OngletFrais } from './OngletFrais.jsx';
-import { OngletBoosts } from './OngletBoosts.jsx';
+import { OngletBudget } from './OngletBudget.jsx';
+import { OngletPublications } from './OngletPublications.jsx';
 import { OngletVentes } from './OngletVentes.jsx';
 import { OngletRecap } from './OngletRecap.jsx';
 
-const ONGLETS = ['tarification', 'frais', 'boosts', 'ventes', 'recap'];
+const ONGLETS = ['tarification', 'frais', 'budget', 'publications', 'ventes', 'recap'];
 
 export function FicheAchat() {
   const { id } = useParams();
@@ -58,7 +59,8 @@ export function FicheAchat() {
   const onglets = [
     { cle: 'tarification', libelle: 'Produits et tarification', compteur: achat.nbProduits },
     { cle: 'frais', libelle: 'Frais', compteur: achat.frais.length },
-    { cle: 'boosts', libelle: 'Boosts', compteur: achat.boosts.length },
+    { cle: 'budget', libelle: 'Budget', compteur: achat.boosts.length },
+    { cle: 'publications', libelle: 'Publications', compteur: achat.publications.length },
     { cle: 'ventes', libelle: 'Ventes', compteur: achat.ventes.length },
     { cle: 'recap', libelle: 'Récapitulatif' },
   ];
@@ -115,7 +117,8 @@ export function FicheAchat() {
 
       {onglet === 'tarification' && <Tarification achat={achat} setAchat={setAchat} />}
       {onglet === 'frais' && <OngletFrais achat={achat} recharger={recharger} />}
-      {onglet === 'boosts' && <OngletBoosts achat={achat} recharger={recharger} />}
+      {onglet === 'budget' && <OngletBudget achat={achat} recharger={recharger} />}
+      {onglet === 'publications' && <OngletPublications achat={achat} />}
       {onglet === 'ventes' && <OngletVentes achat={achat} />}
       {onglet === 'recap' && <OngletRecap achat={achat} />}
 

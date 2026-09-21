@@ -745,6 +745,18 @@
 }
 
 /* Cartes de publication (liste) */
+.carte-pub__menu {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+}
+.carte-pub__menu .bouton {
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--texte);
+}
+.carte-pub--supprimee {
+  opacity: 0.65;
+}
 .carte-pub {
   display: flex;
   flex-direction: column;
@@ -780,6 +792,61 @@
 }
 .apercu-lien--vide span {
   color: var(--texte-discret);
+}
+
+/* Fiche d'une publication */
+.fiche-pub {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 900px) {
+  .fiche-pub {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+.fiche-pub__visuel .apercu-lien {
+  aspect-ratio: 4 / 5;
+  max-height: 560px;
+  border-radius: var(--rayon-carte) var(--rayon-carte) 0 0;
+}
+.fiche-pub__visuel .apercu-lien img {
+  object-fit: contain;
+  background: var(--fond-doux);
+}
+.fiche-pub__pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+}
+.fiche-pub__lien {
+  min-width: 0;
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Budget d'une commande */
+.jauge {
+  height: 10px;
+  border-radius: var(--rayon-pilule);
+  background: var(--peche-claire);
+  overflow: hidden;
+}
+.jauge__barre {
+  height: 100%;
+  border-radius: var(--rayon-pilule);
+  background: var(--principale);
+  transition: width 300ms ease;
+}
+.jauge__barre--depasse {
+  background: var(--danger);
 }
 
 /* ----------------------------------------------------------------------
@@ -824,30 +891,104 @@
 }
 
 /* ----------------------------------------------------------------------
-   Paramètres
+   Paramètres : menu en rangée défilante sur mobile, colonne sur grand écran
    ---------------------------------------------------------------------- */
 .parametres {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 20px;
+  gap: 16px;
+}
+.menu-lateral {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 calc(-1 * var(--gouttiere));
+  padding: 0 var(--gouttiere) 4px;
+}
+.menu-lateral::-webkit-scrollbar {
+  display: none;
+}
+.menu-lateral__lien {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  min-height: var(--cible-tactile);
+  padding: 8px 14px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-pilule);
+  background: var(--surface);
+  color: var(--texte-secondaire);
+  font-weight: 500;
+  font-size: 0.925rem;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.menu-lateral__lien:hover {
+  background: var(--peche-claire);
+  color: var(--texte);
+}
+.menu-lateral__lien[aria-current='true'] {
+  background: var(--principale);
+  border-color: var(--principale);
+  color: var(--sur-principale);
 }
 @media (min-width: 900px) {
   .parametres {
     grid-template-columns: 220px 1fr;
+    gap: 20px;
     align-items: start;
   }
-  .parametres__menu {
+  .menu-lateral {
     position: sticky;
     top: calc(var(--hauteur-barre) + 24px);
-  }
-}
-.parametres__menu {
-  display: flex;
-  gap: 4px;
-  overflow-x: auto;
-}
-@media (min-width: 900px) {
-  .parametres__menu {
     flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    overflow: visible;
   }
+  .menu-lateral__lien {
+    border: 0;
+    border-radius: var(--rayon-carte);
+    background: none;
+    white-space: normal;
+  }
+  .menu-lateral__lien[aria-current='true'] {
+    background: var(--peche-claire);
+    color: var(--principale);
+  }
+}
+
+/* Livraison d'une vente */
+.etapes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 640px) {
+  .etapes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.etape {
+  padding: 10px 12px;
+  border-radius: var(--rayon-champ);
+  background: var(--fond-doux);
+  border: 1px solid var(--bordure);
+}
+.etape--faite {
+  border-color: var(--succes);
+  background: var(--succes-fond);
+}
+.etape__libelle {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--texte-discret);
+}
+.etape__valeur {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Lock, Save, Package } from 'lucide-react';
-import { Achats, Produits, messageErreur } from '../../services/api.js';
+import { Plus, Trash2, Lock, Save, Package, PackagePlus } from 'lucide-react';
+import { Achats, Produits, Categories, messageErreur } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { arrondir, tauxEuro, prixAchatAr, prixVenteDepuisMarge, margeDepuisPrixVente, sommeLignes } from '../../lib/calculs.js';
@@ -14,6 +14,7 @@ import { BadgeFigement, BadgeStock } from '../../components/ui/Badge.jsx';
 import { Montant, Marge } from '../../components/ui/Montant.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { EtatVide, Encart, ImageProduit } from '../../components/ui/Divers.jsx';
+import { FormulaireProduit } from '../produits/FormulaireProduit.jsx';
 
 const texte = (v) => (v === null || v === undefined ? '' : String(v));
 
@@ -53,6 +54,7 @@ export function Tarification({ achat, setAchat }) {
   const mobile = useMediaQuery(REQUETE_MOBILE);
   const [lignes, setLignes] = useState(() => achat.lignes.map(depuisServeur));
   const [sommeAr, setSommeAr] = useState(texte(achat.sommeAr));
+  const [sommeTotale, setSommeTotale] = useState(texte(achat.sommeTotale));
   const [sommeArSale, setSommeArSale] = useState(false);
   const [achatVu, setAchatVu] = useState(achat);
   const [modifiee, setModifiee] = useState(null); // { id, champ, t } : dernière cellule modifiée, surlignée
@@ -64,7 +66,10 @@ export function Tarification({ achat, setAchat }) {
   if (achat !== achatVu) {
     setAchatVu(achat);
     setLignes(fusionner(lignes, achat.lignes));
-    if (!sommeArSale) setSommeAr(texte(achat.sommeAr));
+    if (!sommeArSale) {
+      setSommeAr(texte(achat.sommeAr));
+      setSommeTotale(texte(achat.sommeTotale));
+    }
   }
 
   const sale = sommeArSale || lignes.some((l) => l.sale);
@@ -79,7 +84,9 @@ export function Tarification({ achat, setAchat }) {
   }, [sale]);
 
   const sommeEuro = useMemo(() => sommeLignes(lignes), [lignes]);
-  const taux = useMemo(() => tauxEuro(sommeEuro, sommeAr), [sommeEuro, sommeAr]);
+  // Le total saisi (frais inclus) fait foi pour le taux ; sinon la somme des lignes
+  const sommeRetenue = sommeTotale === '' ? sommeEuro : Number(sommeTotale);
+  const taux = useMemo(() => tauxEuro(sommeRetenue, sommeAr), [sommeRetenue, sommeAr]);
 
   const marquer = (id, champ) => setModifiee({ id, champ, t: Date.now() });
 
@@ -108,10 +115,16 @@ export function Tarification({ achat, setAchat }) {
     setSommeArSale(true);
     setLignes((liste) => liste.map((l) => (l.margeSaisie === null ? l : { ...l, margeSaisie: null })));
   };
+  const changerSommeTotale = (valeur) => {
+    setSommeTotale(valeur);
+    setSommeArSale(true);
+    setLignes((liste) => liste.map((l) => (l.margeSaisie === null ? l : { ...l, margeSaisie: null })));
+  };
 
   const corps = (figer) => ({
     figer,
     sommeAr: sommeAr === '' ? 0 : Number(sommeAr),
+    sommeTotale: sommeTotale === '' ? null : Number(sommeTotale),
     lignes: lignes.map((l) => ({
       id: l.id,
       quantite: Number(l.quantite),
@@ -197,7 +210,8 @@ export function Tarification({ achat, setAchat }) {
         <div className="tarif__barre">
           <BadgeFigement fige />
           <span className="petit secondaire">
-            Figée le {dateHeure(achat.dateFigement)} · {formatTaux(achat.taux)} · Somme {euro(achat.somme)} · Payé {ariary(achat.sommeAr)}
+            Figée le {dateHeure(achat.dateFigement)} · {formatTaux(achat.taux)} · Total {euro(achat.sommeEffective)}
+            {achat.sommeTotale !== null && ` (lignes ${euro(achat.somme)})`} · Payé {ariary(achat.sommeAr)}
           </span>
         </div>
         {mobile ? (
@@ -297,11 +311,13 @@ export function Tarification({ achat, setAchat }) {
       <Carte nu className="tarif">
         <div className="tarif__barre">
           <BadgeFigement fige={false} />
+          <Champ libelle="Total de la commande (€)" aide={sommeTotale === '' ? `Somme des lignes : ${euro(sommeEuro)}` : `Lignes : ${euro(sommeEuro)}`}>
+            {(id) => <SaisieMontant id={id} suffixe="€" value={sommeTotale} onChange={(e) => changerSommeTotale(e.target.value)} placeholder={String(arrondir(sommeEuro))} />}
+          </Champ>
           <Champ libelle="Somme payée (Ar)">
             {(id) => <SaisieMontant id={id} suffixe="Ar" value={sommeAr} onChange={(e) => changerSommeAr(e.target.value)} />}
           </Champ>
           <div className="petit secondaire">
-            <div>Somme en euro : <strong className="tabulaire">{euro(sommeEuro)}</strong></div>
             <div>Taux : <strong className="tabulaire">{formatTaux(taux)}</strong></div>
           </div>
           {sale && <span className="badge badge--attention pousser">Modifications non enregistrées</span>}
@@ -343,7 +359,10 @@ export function Tarification({ achat, setAchat }) {
 function AjoutLigne({ achat, setAchat, lignes }) {
   const { notifier } = useToast();
   const charger = useCallback(() => Produits.lister(), []);
-  const { donnees: produits } = useApi(charger);
+  const chargerCategories = useCallback(() => Categories.lister(), []);
+  const { donnees: produits, recharger: rechargerProduits } = useApi(charger);
+  const { donnees: categories } = useApi(chargerCategories);
+  const [nouveauProduit, setNouveauProduit] = useState(false);
   const [idProduit, setIdProduit] = useState('');
   const [quantite, setQuantite] = useState('1');
   const [prix, setPrix] = useState('');
@@ -379,15 +398,30 @@ function AjoutLigne({ achat, setAchat, lignes }) {
     <form className="ajout-ligne" onSubmit={ajouter}>
       <Champ libelle="Ajouter un produit">
         {(id) => (
-          <Selection id={id} value={idProduit} onChange={(e) => choisir(e.target.value)} placeholder={disponibles.length ? 'Choisir un produit' : 'Tous les produits sont déjà sur la commande'} disabled={!disponibles.length}>
-            {disponibles.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nom}{p.prix !== null && p.prix !== undefined ? ` · ${euro(p.prix)}` : ''}
-              </option>
-            ))}
-          </Selection>
+          <div className="flex" style={{ gap: 6 }}>
+            <Selection id={id} value={idProduit} onChange={(e) => choisir(e.target.value)} placeholder={disponibles.length ? 'Choisir un produit' : 'Tous les produits sont déjà sur la commande'} disabled={!disponibles.length}>
+              {disponibles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nom}{p.prix !== null && p.prix !== undefined ? ` · ${euro(p.prix)}` : ''}
+                </option>
+              ))}
+            </Selection>
+            <Bouton icone={PackagePlus} onClick={() => setNouveauProduit(true)} aria-label="Nouveau produit" title="Créer un produit" />
+          </div>
         )}
       </Champ>
+      <FormulaireProduit
+        ouvert={nouveauProduit}
+        categories={categories ?? []}
+        onFermer={() => setNouveauProduit(false)}
+        onEnregistre={async (p) => {
+          setNouveauProduit(false);
+          notifier('Produit créé');
+          await rechargerProduits();
+          setIdProduit(String(p.id));
+          setPrix(p.prix !== null && p.prix !== undefined ? String(p.prix) : '');
+        }}
+      />
       <Champ libelle="Quantité">
         {(id) => <Saisie id={id} type="number" inputMode="numeric" min="1" step="1" value={quantite} onChange={(e) => setQuantite(e.target.value)} />}
       </Champ>

@@ -21,7 +21,7 @@ const COLONNES_EXPORT = [
   { cle: 'dateArrivee', titre: 'Arrivée réelle', valeur: (a) => dateCourte(a.dateArrivee) },
   { cle: 'statut', titre: 'Statut', valeur: (a) => LIBELLES_STATUT_ACHAT[a.statut] },
   { cle: 'nbProduits', titre: 'Produits' },
-  { cle: 'somme', titre: 'Somme (€)', valeur: (a) => Number(a.somme), texte: (a) => euro(a.somme), align: 'droite' },
+  { cle: 'somme', titre: 'Total (€)', valeur: (a) => Number(a.sommeEffective), texte: (a) => euro(a.sommeEffective), align: 'droite' },
   { cle: 'sommeAr', titre: 'Payé (Ar)', valeur: (a) => Number(a.sommeAr), texte: (a) => ariary(a.sommeAr), align: 'droite' },
   { cle: 'margeEstimee', titre: 'Marge estimée', valeur: (a) => a.recap.margeEstimeePct, texte: (a) => pourcentage(a.recap.margeEstimeePct), align: 'droite' },
 ];
@@ -51,8 +51,8 @@ function CarteAchat({ achat: a }) {
       </div>
       <div className="stats-mini">
         <div>
-          <div className="stats-mini__libelle">Somme</div>
-          <div className="stats-mini__valeur">{euro(a.somme)}</div>
+          <div className="stats-mini__libelle">Total</div>
+          <div className="stats-mini__valeur">{euro(a.sommeEffective)}</div>
         </div>
         <div>
           <div className="stats-mini__libelle">Payé</div>
@@ -102,7 +102,7 @@ export function ListeAchats() {
       </div>
     ) },
     { cle: 'nbProduits', titre: 'Produits', align: 'droite' },
-    { cle: 'somme', titre: 'Somme (€)', align: 'droite', classe: 'colonne-euro', rendu: (a) => <Montant valeur={a.somme} devise="€" /> },
+    { cle: 'somme', titre: 'Total (€)', align: 'droite', classe: 'colonne-euro', rendu: (a) => <Montant valeur={a.sommeEffective} devise="€" /> },
     { cle: 'sommeAr', titre: 'Payé (Ar)', align: 'droite', classe: 'colonne-ar', rendu: (a) => <Montant valeur={a.sommeAr} /> },
     { cle: 'marge', titre: 'Marge estimée', align: 'droite', rendu: (a) => <Marge pct={a.fige ? a.recap.margeEstimeePct : null} /> },
   ];

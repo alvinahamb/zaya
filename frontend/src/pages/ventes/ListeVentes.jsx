@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Receipt } from 'lucide-react';
 import { Ventes, Reseaux } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
@@ -11,12 +11,15 @@ import { Tableau } from '../../components/ui/Tableau.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Montant } from '../../components/ui/Montant.jsx';
 import { Saisie, Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, BoutonsExport } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, BoutonsExport, Onglets } from '../../components/ui/Divers.jsx';
+import { BadgeStatutLivraison } from '../../components/ui/Badge.jsx';
+import { OngletLivraisons } from './OngletLivraisons.jsx';
 
 const COLONNES_EXPORT = [
   { cle: 'dateVente', titre: 'Date', valeur: (v) => dateCourte(v.dateVente) },
   { cle: 'nom', titre: 'Libellé', valeur: (v) => v.nom || `Vente n° ${v.id}` },
-  { cle: 'reseau', titre: 'Réseau', valeur: (v) => v.reseau?.nom },
+  { cle: 'client', titre: 'Client', valeur: (v) => v.client?.nom ?? '' },
+  { cle: 'reseaux', titre: 'Réseaux', valeur: (v) => (v.reseaux ?? []).map((r) => r.nom).join(', ') },
   { cle: 'nbArticles', titre: 'Articles', align: 'droite' },
   { cle: 'reductionAr', titre: 'Réduction (Ar)', valeur: (v) => Number(v.reductionAr), texte: (v) => ariary(v.reductionAr), align: 'droite' },
   { cle: 'sommeAr', titre: 'Total (Ar)', valeur: (v) => Number(v.sommeAr), texte: (v) => ariary(v.sommeAr), align: 'droite' },
@@ -34,13 +37,14 @@ function CarteVente({ vente: v }) {
         <div style={{ minWidth: 0 }}>
           <div className="carte-ligne__titre">{dateCourte(v.dateVente)}</div>
           <div className="carte-ligne__sous">
-            {v.nom || `Vente n° ${v.id}`} · {nombre(v.nbArticles)} article{v.nbArticles > 1 ? 's' : ''}
+            {v.client ? v.client.nom : v.nom || `Vente n° ${v.id}`} · {nombre(v.nbArticles)} article{v.nbArticles > 1 ? 's' : ''}
             {Number(v.reductionAr) > 0 && ` · réduction ${ariary(v.reductionAr)}`}
           </div>
         </div>
         <div className="carte-ligne__droite">
           <span className="carte-ligne__montant">{ariary(v.sommeAr)}</span>
-          <Badge ton="info">{v.reseau?.nom}</Badge>
+          <span className="flex" style={{ gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>{(v.reseaux ?? []).map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}</span>
+          {v.livraison && <BadgeStatutLivraison statut={v.livraison.statut} />}
         </div>
       </div>
     </Link>
@@ -50,6 +54,8 @@ function CarteVente({ vente: v }) {
 export function ListeVentes() {
   const naviguer = useNavigate();
   const mobile = useMediaQuery(REQUETE_MOBILE);
+  const [params, setParams] = useSearchParams();
+  const onglet = params.get('onglet') === 'livraisons' ? 'livraisons' : 'ventes';
   const [du, setDu] = useState(debutMois);
   const [au, setAu] = useState(() => aujourdhuiISO());
   const [reseau, setReseau] = useState('');
@@ -70,7 +76,9 @@ export function ListeVentes() {
         <div className="tres-petit secondaire">{v.nom || `Vente n° ${v.id}`}</div>
       </div>
     ) },
-    { cle: 'reseau', titre: 'Réseau', rendu: (v) => <Badge ton="info">{v.reseau?.nom}</Badge> },
+    { cle: 'client', titre: 'Client', rendu: (v) => (v.client ? v.client.nom : <span className="secondaire">Anonyme</span>) },
+    { cle: 'reseaux', titre: 'Réseaux', rendu: (v) => <span className="flex" style={{ gap: 4, flexWrap: 'wrap' }}>{(v.reseaux ?? []).map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}</span> },
+    { cle: 'livraison', titre: 'Livraison', rendu: (v) => (v.livraison ? <BadgeStatutLivraison statut={v.livraison.statut} /> : '—') },
     { cle: 'nbArticles', titre: 'Articles', align: 'droite', rendu: (v) => nombre(v.nbArticles) },
     { cle: 'reductionAr', titre: 'Réduction', align: 'droite', rendu: (v) => (Number(v.reductionAr) ? <Montant valeur={v.reductionAr} /> : '—') },
     { cle: 'sommeAr', titre: 'Total (Ar)', align: 'droite', rendu: (v) => <Montant valeur={v.sommeAr} className="gras" /> },
@@ -87,6 +95,15 @@ export function ListeVentes() {
 
   return (
     <Page titre="Ventes" actions={<BoutonLien variante="principal" icone={Plus} to="/ventes/nouvelle">Nouvelle vente</BoutonLien>}>
+      <div className="espace-bas">
+        <Onglets
+          onglets={[{ cle: 'ventes', libelle: 'Ventes' }, { cle: 'livraisons', libelle: 'Livraisons' }]}
+          actif={onglet}
+          onChange={(cle) => setParams(cle === 'ventes' ? {} : { onglet: cle }, { replace: true })}
+        />
+      </div>
+      {onglet === 'livraisons' ? <OngletLivraisons /> : (
+      <>
       <div className="outils">
         <Saisie type="date" value={du} onChange={(e) => setDu(e.target.value)} aria-label="Du" />
         <span className="secondaire petit">au</span>
@@ -123,6 +140,8 @@ export function ListeVentes() {
               <tr>
                 <td>{resume}</td>
                 <td />
+                <td />
+                <td />
                 <td className="droite">{nombre(articles)}</td>
                 <td />
                 <td className="droite">{ariary(total)}</td>
@@ -131,6 +150,8 @@ export function ListeVentes() {
           />
         )}
       </Carte>
+      </>
+      )}
     </Page>
   );
 }

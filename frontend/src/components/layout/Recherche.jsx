@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { Search, Package, ShoppingBag, Receipt, Megaphone, X } from 'lucide-react';
+import { Search, Package, ShoppingBag, Receipt, Megaphone, Contact, X } from 'lucide-react';
 import { Recherche as ApiRecherche } from '../../services/api.js';
 import { useDebounce } from '../../lib/hooks.js';
 import { dateCourte, ariary, LIBELLES_STATUT_PUBLICATION } from '../../lib/format.js';
@@ -9,8 +9,9 @@ import { dateCourte, ariary, LIBELLES_STATUT_PUBLICATION } from '../../lib/forma
 const GROUPES = [
   { cle: 'produits', titre: 'Produits', icone: Package, lien: (p) => `/produits/${p.id}`, libelle: (p) => p.nom, detail: (p) => [p.Categorie?.nom, p.codeShein].filter(Boolean).join(' · ') },
   { cle: 'achats', titre: 'Achats', icone: ShoppingBag, lien: (a) => `/achats/${a.id}`, libelle: (a) => a.nom, detail: (a) => (a.dateCommande ? `Commandée le ${dateCourte(a.dateCommande)}` : `N° ${a.id}`) },
-  { cle: 'ventes', titre: 'Ventes', icone: Receipt, lien: (v) => `/ventes/${v.id}`, libelle: (v) => v.nom || `Vente n° ${v.id}`, detail: (v) => `${dateCourte(v.dateVente)} · ${v.Reseau?.nom ?? ''} · ${ariary(v.sommeAr)}` },
-  { cle: 'publications', titre: 'Publications', icone: Megaphone, lien: (p) => `/publications?ouvrir=${p.id}`, libelle: (p) => p.nom, detail: (p) => [LIBELLES_STATUT_PUBLICATION[p.statut], p.dateHeurePublication && dateCourte(p.dateHeurePublication)].filter(Boolean).join(' · ') },
+  { cle: 'ventes', titre: 'Ventes', icone: Receipt, lien: (v) => `/ventes/${v.id}`, libelle: (v) => v.nom || `Vente n° ${v.id}`, detail: (v) => [dateCourte(v.dateVente), (v.reseaux ?? []).join(', '), ariary(v.sommeAr)].filter(Boolean).join(' · ') },
+  { cle: 'publications', titre: 'Publications', icone: Megaphone, lien: (p) => `/publications/${p.id}`, libelle: (p) => p.nom, detail: (p) => [LIBELLES_STATUT_PUBLICATION[p.statut], p.dateHeurePublication && dateCourte(p.dateHeurePublication)].filter(Boolean).join(' · ') },
+  { cle: 'clients', titre: 'Clients', icone: Contact, lien: (c) => `/parametres?section=clients&q=${encodeURIComponent(c.nom)}`, libelle: (c) => c.nom, detail: (c) => [c.telephone, (c.reseaux ?? []).join(', ')].filter(Boolean).join(' · ') },
 ];
 
 /**
@@ -78,7 +79,7 @@ export function Recherche({ onFermer }) {
             value={texte}
             onChange={(e) => setTexte(e.target.value)}
             onKeyDown={surTouche}
-            placeholder="Rechercher un produit, une commande, une vente…"
+            placeholder="Produit, commande, vente, publication, client…"
             aria-label="Rechercher"
           />
           <button type="button" className="bouton bouton--discret bouton--icone bouton--petit" onClick={onFermer} aria-label="Fermer">

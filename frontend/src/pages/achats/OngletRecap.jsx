@@ -15,7 +15,7 @@ export function OngletRecap({ achat }) {
       <div className="bandeau-recap">
         <Indicateur libelle="Somme d'achat avec frais" valeur={ariary(r.achatAvecFrais)} sous={`Payé ${ariary(r.sommeAr)} + frais ${ariary(r.fraisAchat)}`} />
         <Indicateur libelle="Estimation de vente" valeur={ariary(r.estimationVente)} sous={`${nombre(r.quantiteAchetee)} article${r.quantiteAchetee > 1 ? 's' : ''} au prix posé`} />
-        <Indicateur libelle="Somme des boosts" valeur={ariary(r.sommeBoosts)} sous="Boosts et leurs frais" />
+        <Indicateur libelle="Somme des boosts" valeur={ariary(r.sommeBoosts)} sous="Boosts des publications et leurs frais" />
         <Indicateur libelle="Vente actuelle" valeur={ariary(r.venteActuelle)} sous={`${nombre(r.quantiteVendue)} vendu${r.quantiteVendue > 1 ? 's' : ''}, ${nombre(r.stockRestant)} restant${r.stockRestant > 1 ? 's' : ''}`} />
         <Indicateur libelle="Marge estimée" valeur={pourcentage(r.margeEstimeePct)} couleur={couleurMarge(r.margeEstimeePct)} sous="Sur l'achat avec frais" />
         <Indicateur libelle="Marge réelle" valeur={pourcentage(r.margeReellePct)} couleur={couleurMarge(r.margeReellePct)} sous="Vente − boosts − achat" />
@@ -23,8 +23,11 @@ export function OngletRecap({ achat }) {
 
       <Carte titre="Détail">
         <dl className="definitions">
-          <dt>Somme de la commande</dt>
-          <dd>{euro(r.sommeEuro)}</dd>
+          <dt>Total de la commande</dt>
+          <dd>
+            {euro(r.sommeEuro)}
+            {achat.sommeTotale !== null && <span className="tres-petit secondaire"> (somme des lignes : {euro(achat.somme)})</span>}
+          </dd>
           <dt>Somme payée</dt>
           <dd>{ariary(r.sommeAr)}</dd>
           <dt>Taux d'un euro</dt>

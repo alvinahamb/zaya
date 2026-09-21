@@ -104,11 +104,28 @@ export const Boosts = {
   supprimer: (id) => donnees(api.delete(`/boosts/${id}`)),
 };
 
+export const Budgets = {
+  lister: (params) => donnees(api.get('/budgets', { params })),
+  creer: (corps) => donnees(api.post('/budgets', corps)),
+  modifier: (id, corps) => donnees(api.put(`/budgets/${id}`, corps)),
+  supprimer: (id) => donnees(api.delete(`/budgets/${id}`)),
+};
+
 export const Ventes = crud('/ventes');
+
+export const Clients = crud('/clients');
+
+export const Livraisons = {
+  ...crud('/livraisons'),
+  changerStatut: (id, statut) => donnees(api.patch(`/livraisons/${id}/statut`, { statut })),
+};
 
 export const Publications = {
   ...crud('/publications'),
   changerStatut: (id, statut) => donnees(api.patch(`/publications/${id}/statut`, { statut })),
+  // Sans `definitif`, la publication part à la corbeille (statut « supprimee ») et reste restaurable
+  supprimer: (id, definitif = false) => donnees(api.delete(`/publications/${id}`, { params: definitif ? { definitif: 1 } : undefined })),
+  restaurer: (id) => donnees(api.patch(`/publications/${id}/statut`, { statut: 'a_faire' })),
 };
 
 export const Stats = { lire: (params) => donnees(api.get('/stats', { params })) };

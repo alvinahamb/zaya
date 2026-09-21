@@ -125,4 +125,23 @@ export const LIBELLES_STATUT_PUBLICATION = {
   a_faire: 'À faire',
   creee: 'Créée',
   publiee: 'Publiée',
+  supprimee: 'Supprimée',
+};
+
+/** Statuts qu'on peut choisir dans un formulaire (la corbeille se gère par les actions). */
+export const STATUTS_PUBLICATION_ACTIFS = ['a_faire', 'creee', 'publiee'];
+
+export const LIBELLES_STATUT_LIVRAISON = {
+  a_programmer: 'À programmer',
+  programmee: 'Programmée',
+  en_cours: 'En cours de livraison',
+  livree: 'Livrée',
+  annulee: 'Annulée',
+};
+
+/** Étape suivante d'une livraison, avec le libellé du bouton. */
+export const SUIVANT_LIVRAISON = {
+  a_programmer: { statut: 'programmee', libelle: 'Livreur appelé' },
+  programmee: { statut: 'en_cours', libelle: 'Remise au livreur' },
+  en_cours: { statut: 'livree', libelle: 'Marquer livrée' },
 };

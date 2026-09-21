@@ -1,5 +1,5 @@
-import { Truck, PackageCheck, AlertTriangle, Circle, PenLine, CheckCircle2, Lock, FileEdit } from 'lucide-react';
-import { LIBELLES_STATUT_ACHAT, LIBELLES_STATUT_PUBLICATION, nombre } from '../../lib/format.js';
+import { Truck, PackageCheck, AlertTriangle, Circle, PenLine, CheckCircle2, Lock, FileEdit, Trash2, PhoneCall, Ban } from 'lucide-react';
+import { LIBELLES_STATUT_ACHAT, LIBELLES_STATUT_PUBLICATION, LIBELLES_STATUT_LIVRAISON, nombre } from '../../lib/format.js';
 
 /** ton : neutre | succes | attention | danger | info | principal */
 export function Badge({ ton = 'neutre', icone: Icone, children, className = '' }) {
@@ -30,6 +30,7 @@ const STATUTS_PUBLICATION = {
   a_faire: { ton: 'attention', icone: Circle },
   creee: { ton: 'info', icone: PenLine },
   publiee: { ton: 'succes', icone: CheckCircle2 },
+  supprimee: { ton: 'neutre', icone: Trash2 },
 };
 
 export function BadgeStatutPublication({ statut }) {
@@ -53,5 +54,22 @@ export function BadgeFigement({ fige }) {
     <Badge ton="succes" icone={Lock}>Figée</Badge>
   ) : (
     <Badge ton="attention" icone={FileEdit}>Brouillon</Badge>
+  );
+}
+
+const STATUTS_LIVRAISON = {
+  a_programmer: { ton: 'attention', icone: Circle },
+  programmee: { ton: 'info', icone: PhoneCall },
+  en_cours: { ton: 'principal', icone: Truck },
+  livree: { ton: 'succes', icone: PackageCheck },
+  annulee: { ton: 'neutre', icone: Ban },
+};
+
+export function BadgeStatutLivraison({ statut }) {
+  const s = STATUTS_LIVRAISON[statut] ?? {};
+  return (
+    <Badge ton={s.ton} icone={s.icone}>
+      {LIBELLES_STATUT_LIVRAISON[statut] ?? statut}
+    </Badge>
   );
 }

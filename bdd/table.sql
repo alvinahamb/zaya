@@ -20,11 +20,18 @@ BEGIN;
 -- ---------------------------------------------------------------------
 --  Nettoyage (permet de relancer le script)
 -- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS "Livraison"    CASCADE;
+DROP TABLE IF EXISTS "Budget"       CASCADE;
+DROP TABLE IF EXISTS "Frais"        CASCADE;
+DROP TABLE IF EXISTS "BoostReseau"  CASCADE;
+DROP TABLE IF EXISTS "Boost"        CASCADE;
+DROP TABLE IF EXISTS "PublicationReseau" CASCADE;
 DROP TABLE IF EXISTS "Publication"  CASCADE;
 DROP TABLE IF EXISTS "DetailVente"  CASCADE;
+DROP TABLE IF EXISTS "VenteReseau"  CASCADE;
 DROP TABLE IF EXISTS "Vente"        CASCADE;
-DROP TABLE IF EXISTS "Frais"        CASCADE;
-DROP TABLE IF EXISTS "Boost"        CASCADE;
+DROP TABLE IF EXISTS "ClientReseau" CASCADE;
+DROP TABLE IF EXISTS "Client"       CASCADE;
 DROP TABLE IF EXISTS "DetailAchat"  CASCADE;
 DROP TABLE IF EXISTS "Achat"        CASCADE;
 DROP TABLE IF EXISTS "Produit"      CASCADE;
@@ -94,7 +101,8 @@ CREATE TABLE "Achat" (
     "dateCommande"          DATE,
     "dateArriveeEstimee"    DATE,
     "dateArrivee"           DATE,
-    "somme"                 NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK ("somme" >= 0),     -- euro : Σ quantite x prix
+    "somme"                 NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK ("somme" >= 0),     -- euro : Σ quantite x prix (calculée)
+    "sommeTotale"           NUMERIC(12,2) CHECK ("sommeTotale" >= 0),                  -- euro : total saisi (frais inclus) ; s'il est renseigné, il fait foi pour le taux
     "sommeAr"               NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("sommeAr" >= 0),   -- Ariary : montant payé
     "dateFigement"          TIMESTAMP,                                                  -- NULL tant que la tarification est en brouillon
     "dateCreation"          TIMESTAMP     NOT NULL DEFAULT NOW()
@@ -120,23 +128,155 @@ CREATE TABLE "DetailAchat" (
 
 
 -- =====================================================================
---  4. Boosts et frais
+--  5. Clients et ventes
 -- =====================================================================
 
+-- Client connu (facultatif sur une vente : la vente reste anonyme par défaut)
+CREATE TABLE "Client" (
+    "id"            SERIAL        PRIMARY KEY,
+    "nom"           VARCHAR(150)  NOT NULL,              -- nom et prénom
+    "telephone"     VARCHAR(30),
+    "adresse"       TEXT,
+    "note"          TEXT,
+    "dateCreation"  TIMESTAMP     NOT NULL DEFAULT NOW()
+);
+
+-- Réseaux par lesquels le client commande
+CREATE TABLE "ClientReseau" (
+    "idClient"      INT NOT NULL,
+    "idReseau"      INT NOT NULL,
+
+    CONSTRAINT "pkClientReseau" PRIMARY KEY ("idClient", "idReseau"),
+    CONSTRAINT "fkClientReseauClient" FOREIGN KEY ("idClient") REFERENCES "Client" ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkClientReseauReseau" FOREIGN KEY ("idReseau") REFERENCES "Reseau" ("id")
+);
+
+CREATE TABLE "Vente" (
+    "id"            SERIAL        PRIMARY KEY,
+    "nom"           VARCHAR(150),
+    "idClient"      INT,                                 -- NULL : client anonyme
+    "dateVente"     DATE          NOT NULL DEFAULT CURRENT_DATE,
+    "reductionAr"   NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("reductionAr" >= 0),   -- Ariary
+    "sommeAr"       NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("sommeAr" >= 0),       -- Ariary : Σ quantite x prixVenteAr - reductionAr
+    "dateCreation"  TIMESTAMP     NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT "fkVenteClient"
+        FOREIGN KEY ("idClient") REFERENCES "Client" ("id") ON DELETE SET NULL
+);
+
+-- Réseaux sur lesquels la vente s'est faite (au moins un, contrôlé par l'API)
+CREATE TABLE "VenteReseau" (
+    "idVente"       INT NOT NULL,
+    "idReseau"      INT NOT NULL,
+
+    CONSTRAINT "pkVenteReseau" PRIMARY KEY ("idVente", "idReseau"),
+    CONSTRAINT "fkVenteReseauVente"  FOREIGN KEY ("idVente")  REFERENCES "Vente"  ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkVenteReseauReseau" FOREIGN KEY ("idReseau") REFERENCES "Reseau" ("id")
+);
+
+CREATE TABLE "DetailVente" (
+    "id"             SERIAL        PRIMARY KEY,
+    "idVente"        INT           NOT NULL,
+    "idDetailAchat"  INT           NOT NULL,      -- ligne de commande d'origine (donne produit + commande)
+    "quantite"       INT           NOT NULL CHECK ("quantite" > 0),
+    "prixVenteAr"    NUMERIC(14,2) NOT NULL CHECK ("prixVenteAr" >= 0),   -- Ariary : prix réellement pratiqué
+    "dateCreation"   TIMESTAMP     NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT "fkDetailVenteVente"
+        FOREIGN KEY ("idVente")       REFERENCES "Vente"       ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkDetailVenteDetailAchat"
+        FOREIGN KEY ("idDetailAchat") REFERENCES "DetailAchat" ("id")
+);
+
+
+-- Livraison d'une vente (une au plus par vente)
+--   a_programmer → programmee (livreur appelé) → en_cours → livree ; annulee
+CREATE TABLE "Livraison" (
+    "id"                       SERIAL        PRIMARY KEY,
+    "idVente"                  INT           NOT NULL UNIQUE,
+    "idClient"                 INT,
+    "libelle"                  VARCHAR(150),
+    "adresse"                  TEXT,                     -- recopiée du client, modifiable
+    "telephone"                VARCHAR(30),
+    "livreur"                  VARCHAR(100),             -- nom ou contact du livreur
+    "fraisAr"                  NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("fraisAr" >= 0),   -- Ariary
+    "statut"                   VARCHAR(20)   NOT NULL DEFAULT 'a_programmer',
+    "dateHeureAppelLivreur"    TIMESTAMP,                -- quand appeler les livreurs
+    "dateHeureLivraison"       TIMESTAMP,                -- livraison prévue
+    "dateHeureLivree"          TIMESTAMP,                -- livraison réelle
+    "note"                     TEXT,
+    "dateCreation"             TIMESTAMP     NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT "ckLivraisonStatut"
+        CHECK ("statut" IN ('a_programmer', 'programmee', 'en_cours', 'livree', 'annulee')),
+    CONSTRAINT "fkLivraisonVente"
+        FOREIGN KEY ("idVente")  REFERENCES "Vente"  ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkLivraisonClient"
+        FOREIGN KEY ("idClient") REFERENCES "Client" ("id") ON DELETE SET NULL
+);
+
+
+-- =====================================================================
+--  6. Social media manager
+-- =====================================================================
+
+CREATE TABLE "Publication" (
+    "id"                    SERIAL       PRIMARY KEY,
+    "nom"                   VARCHAR(150) NOT NULL,
+    "description"           TEXT,
+    "statut"                VARCHAR(20)  NOT NULL DEFAULT 'a_faire',
+    "dateHeurePublication"  TIMESTAMP,
+    "lienPinterest"         VARCHAR(255),
+    "lienContenu"           VARCHAR(255),
+    "idAchat"               INT,
+    "dateCreation"          TIMESTAMP    NOT NULL DEFAULT NOW(),
+
+    -- supprimee : corbeille, la publication peut être restaurée
+    CONSTRAINT "ckPublicationStatut"
+        CHECK ("statut" IN ('a_faire', 'creee', 'publiee', 'supprimee')),
+    CONSTRAINT "fkPublicationAchat"
+        FOREIGN KEY ("idAchat")  REFERENCES "Achat"  ("id") ON DELETE SET NULL
+);
+
+-- Une publication est diffusée sur un ou plusieurs réseaux
+CREATE TABLE "PublicationReseau" (
+    "idPublication" INT NOT NULL,
+    "idReseau"      INT NOT NULL,
+
+    CONSTRAINT "pkPublicationReseau" PRIMARY KEY ("idPublication", "idReseau"),
+    CONSTRAINT "fkPublicationReseauPublication"
+        FOREIGN KEY ("idPublication") REFERENCES "Publication" ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkPublicationReseauReseau"
+        FOREIGN KEY ("idReseau")      REFERENCES "Reseau"      ("id")
+);
+
+
+-- =====================================================================
+--  7. Boosts, frais et budgets
+-- =====================================================================
+
+-- Un boost promeut une publication ; sa commande se déduit de la publication
 CREATE TABLE "Boost" (
     "id"            SERIAL        PRIMARY KEY,
     "nom"           VARCHAR(150),
-    "idAchat"       INT           NOT NULL,
-    "idReseau"      INT           NOT NULL,
+    "idPublication" INT           NOT NULL,
     "dateBoost"     DATE,
     "montantAr"     NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("montantAr" >= 0),   -- Ariary
     "raison"        TEXT,
     "dateCreation"  TIMESTAMP     NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT "fkBoostAchat"
-        FOREIGN KEY ("idAchat")  REFERENCES "Achat"  ("id"),
-    CONSTRAINT "fkBoostReseau"
-        FOREIGN KEY ("idReseau") REFERENCES "Reseau" ("id")
+    CONSTRAINT "fkBoostPublication"
+        FOREIGN KEY ("idPublication") REFERENCES "Publication" ("id") ON DELETE CASCADE
+);
+
+-- Réseaux sur lesquels le boost est diffusé
+CREATE TABLE "BoostReseau" (
+    "idBoost"       INT NOT NULL,
+    "idReseau"      INT NOT NULL,
+
+    CONSTRAINT "pkBoostReseau" PRIMARY KEY ("idBoost", "idReseau"),
+    CONSTRAINT "fkBoostReseauBoost"  FOREIGN KEY ("idBoost")  REFERENCES "Boost"  ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkBoostReseauReseau" FOREIGN KEY ("idReseau") REFERENCES "Reseau" ("id")
 );
 
 -- Frais rattachés soit à une commande, soit à un boost (jamais aux deux)
@@ -157,85 +297,46 @@ CREATE TABLE "Frais" (
         CHECK (("idAchat" IS NOT NULL)::int + ("idBoost" IS NOT NULL)::int = 1)
 );
 
-
--- =====================================================================
---  5. Ventes (client anonyme)
--- =====================================================================
-
-CREATE TABLE "Vente" (
+-- Budget de communication alloué à une commande (ex. 50 000 Ar), consommé par les boosts
+CREATE TABLE "Budget" (
     "id"            SERIAL        PRIMARY KEY,
-    "nom"           VARCHAR(150),
-    "idReseau"      INT           NOT NULL,
-    "dateVente"     DATE          NOT NULL DEFAULT CURRENT_DATE,
-    "reductionAr"   NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("reductionAr" >= 0),   -- Ariary
-    "sommeAr"       NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK ("sommeAr" >= 0),       -- Ariary : Σ quantite x prixVenteAr - reductionAr
+    "idAchat"       INT           NOT NULL,
+    "libelle"       VARCHAR(150),
+    "montantAr"     NUMERIC(14,2) NOT NULL CHECK ("montantAr" >= 0),   -- Ariary
+    "dateBudget"    DATE,
     "dateCreation"  TIMESTAMP     NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT "fkVenteReseau"
-        FOREIGN KEY ("idReseau") REFERENCES "Reseau" ("id")
-);
-
-CREATE TABLE "DetailVente" (
-    "id"             SERIAL        PRIMARY KEY,
-    "idVente"        INT           NOT NULL,
-    "idDetailAchat"  INT           NOT NULL,      -- ligne de commande d'origine (donne produit + commande)
-    "quantite"       INT           NOT NULL CHECK ("quantite" > 0),
-    "prixVenteAr"    NUMERIC(14,2) NOT NULL CHECK ("prixVenteAr" >= 0),   -- Ariary : prix réellement pratiqué
-    "dateCreation"   TIMESTAMP     NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT "fkDetailVenteVente"
-        FOREIGN KEY ("idVente")       REFERENCES "Vente"       ("id") ON DELETE CASCADE,
-    CONSTRAINT "fkDetailVenteDetailAchat"
-        FOREIGN KEY ("idDetailAchat") REFERENCES "DetailAchat" ("id")
+    CONSTRAINT "fkBudgetAchat"
+        FOREIGN KEY ("idAchat") REFERENCES "Achat" ("id") ON DELETE CASCADE
 );
 
 
 -- =====================================================================
---  6. Social media manager
--- =====================================================================
-
-CREATE TABLE "Publication" (
-    "id"                    SERIAL       PRIMARY KEY,
-    "nom"                   VARCHAR(150) NOT NULL,
-    "description"           TEXT,
-    "statut"                VARCHAR(20)  NOT NULL DEFAULT 'a_faire',
-    "dateHeurePublication"  TIMESTAMP,
-    "lienPinterest"         VARCHAR(255),
-    "lienContenu"           VARCHAR(255),
-    "idReseau"              INT,
-    "idAchat"               INT,
-    "dateCreation"          TIMESTAMP    NOT NULL DEFAULT NOW(),
-
-    CONSTRAINT "ckPublicationStatut"
-        CHECK ("statut" IN ('a_faire', 'creee', 'publiee')),
-    CONSTRAINT "fkPublicationReseau"
-        FOREIGN KEY ("idReseau") REFERENCES "Reseau" ("id") ON DELETE SET NULL,
-    CONSTRAINT "fkPublicationAchat"
-        FOREIGN KEY ("idAchat")  REFERENCES "Achat"  ("id") ON DELETE SET NULL
-);
-
-
--- =====================================================================
---  7. Index (PostgreSQL n'indexe pas automatiquement les clés étrangères)
+--  8. Index (PostgreSQL n'indexe pas automatiquement les clés étrangères)
 -- =====================================================================
 
 CREATE INDEX "idxProduitCategorie"        ON "Produit"     ("idCategorie");
 CREATE INDEX "idxDetailAchatProduit"      ON "DetailAchat" ("idProduit");
-CREATE INDEX "idxBoostAchat"              ON "Boost"       ("idAchat");
-CREATE INDEX "idxBoostReseau"             ON "Boost"       ("idReseau");
+CREATE INDEX "idxBoostPublication"        ON "Boost"       ("idPublication");
+CREATE INDEX "idxBoostReseauReseau"       ON "BoostReseau" ("idReseau");
+CREATE INDEX "idxBudgetAchat"             ON "Budget"      ("idAchat");
 CREATE INDEX "idxFraisAchat"              ON "Frais"       ("idAchat");
 CREATE INDEX "idxFraisBoost"              ON "Frais"       ("idBoost");
-CREATE INDEX "idxVenteReseau"             ON "Vente"       ("idReseau");
+CREATE INDEX "idxClientReseauReseau"      ON "ClientReseau" ("idReseau");
+CREATE INDEX "idxVenteReseauReseau"       ON "VenteReseau" ("idReseau");
+CREATE INDEX "idxVenteClient"             ON "Vente"       ("idClient");
+CREATE INDEX "idxLivraisonClient"         ON "Livraison"   ("idClient");
+CREATE INDEX "idxLivraisonStatut"         ON "Livraison"   ("statut");
 CREATE INDEX "idxVenteDate"               ON "Vente"       ("dateVente");
 CREATE INDEX "idxDetailVenteVente"        ON "DetailVente" ("idVente");
 CREATE INDEX "idxDetailVenteDetailAchat"  ON "DetailVente" ("idDetailAchat");
-CREATE INDEX "idxPublicationReseau"       ON "Publication" ("idReseau");
+CREATE INDEX "idxPublicationReseauReseau" ON "PublicationReseau" ("idReseau");
 CREATE INDEX "idxPublicationAchat"        ON "Publication" ("idAchat");
 CREATE INDEX "idxPublicationDate"         ON "Publication" ("dateHeurePublication");
 
 
 -- =====================================================================
---  8. Règle d'intégrité : on ne vend pas plus que le stock restant
+--  9. Règle d'intégrité : on ne vend pas plus que le stock restant
 --     stock restant = DetailAchat.quantite - Σ DetailVente.quantite
 -- =====================================================================
 

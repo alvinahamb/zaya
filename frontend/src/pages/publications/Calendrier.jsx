@@ -88,7 +88,7 @@ export function CalendrierSemaine({ depart, publications, onJour, onOuvrir }) {
                       {heure(p.dateHeurePublication)}
                     </span>
                     <span className="pub-carte__nom">{p.nom}</span>
-                    {p.Reseau && <span className="pub-carte__heure">{p.Reseau.nom}</span>}
+                    {p.reseaux?.length > 0 && <span className="pub-carte__heure">{p.reseaux.map((r) => r.nom).join(', ')}</span>}
                   </button>
                 );
               })}

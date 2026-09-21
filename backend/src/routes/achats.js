@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { ErreurHttp, exiger, entierId, nombre, date } from '../lib/erreurs.js';
 import { aujourdhui } from '../lib/dates.js';
+import { enrichirPublication } from './publications.js';
 import {
   arrondir, recapAchat, statutAchat, stockRestant, sommeLignes,
   prixAchatAr, margeDepuisPrixVente, venteNette, tauxEuro,
@@ -15,30 +16,50 @@ const inclusionAchat = {
       Produit: { include: { Categorie: true } },
       DetailVente: {
         include: {
-          Vente: { include: { DetailVente: true, Reseau: true } },
+          Vente: { include: { DetailVente: true, VenteReseau: { include: { Reseau: true } } } },
         },
       },
     },
     orderBy: { id: 'asc' },
   },
   Frais: { orderBy: { id: 'asc' } },
-  Boost: { include: { Reseau: true, Frais: { orderBy: { id: 'asc' } } }, orderBy: { id: 'asc' } },
-  Publication: { include: { Reseau: true }, orderBy: { dateHeurePublication: 'asc' } },
+  Budget: { orderBy: { id: 'asc' } },
+  // Les boosts se rattachent aux publications de la commande (corbeille exclue)
+  Publication: {
+    where: { statut: { not: 'supprimee' } },
+    include: {
+      PublicationReseau: { include: { Reseau: true } },
+      Boost: { include: { BoostReseau: { include: { Reseau: true } }, Frais: { orderBy: { id: 'asc' } } }, orderBy: { id: 'asc' } },
+    },
+    orderBy: { dateHeurePublication: 'asc' },
+  },
 };
 
 /** Vue complète d'une commande : lignes calculées, récapitulatif, ventes liées. */
 function enrichirAchat(achat, { complet = true } = {}) {
-  const recap = recapAchat(achat);
+  const { DetailAchat, Frais, Budget, Publication, ...reste } = achat;
+  const publications = (Publication ?? []).map(enrichirPublication);
+  const boosts = publications.flatMap((p) =>
+    p.boosts.map((b) => ({ ...b, publication: { id: p.id, nom: p.nom } })),
+  );
+  const sommeEffective = achat.sommeTotale === null ? Number(achat.somme) : Number(achat.sommeTotale);
+  const recap = recapAchat({ ...achat, somme: sommeEffective, Boost: boosts });
   const taux = recap.tauxEuro;
-  const { DetailAchat, Frais, Boost, Publication, ...reste } = achat;
+
+  // Budget de communication : alloué, consommé par les boosts (et leurs frais), reste
+  const budgetAr = (Budget ?? []).reduce((s, b) => s + Number(b.montantAr), 0);
+  const budget = { budgetAr, depenseAr: recap.sommeBoosts, resteAr: budgetAr - recap.sommeBoosts };
 
   const base = {
     ...reste,
     fige: Boolean(achat.dateFigement),
     statut: statutAchat(achat, aujourdhui()),
     nbProduits: DetailAchat.length,
+    nbPublications: publications.length,
+    sommeEffective,
     taux,
     recap,
+    budget,
   };
   if (!complet) return base;
 
@@ -67,7 +88,7 @@ function enrichirAchat(achat, { complet = true } = {}) {
           id: v.id,
           nom: v.nom,
           dateVente: v.dateVente,
-          reseau: v.Reseau?.nom ?? null,
+          reseaux: (v.VenteReseau ?? []).map((x) => x.Reseau.nom),
           lignes: [],
           totalAr: 0,
         });
@@ -85,7 +106,7 @@ function enrichirAchat(achat, { complet = true } = {}) {
   }
   const ventes = [...ventesParId.values()].sort((a, b) => (a.dateVente < b.dateVente ? 1 : -1));
 
-  return { ...base, lignes, frais: Frais, boosts: Boost, publications: Publication, ventes };
+  return { ...base, lignes, frais: Frais, budgets: Budget, boosts, publications, ventes };
 }
 
 async function chargerAchat(id, tx = prisma) {
@@ -116,7 +137,10 @@ function lireEntete(corps = {}, { fige = false } = {}) {
     dateArriveeEstimee: date(corps.dateArriveeEstimee, "Date d'arrivée estimée"),
     dateArrivee: date(corps.dateArrivee, "Date d'arrivée"),
   };
-  if (!fige) donnees.sommeAr = nombre(corps.sommeAr, { min: 0, nom: 'Somme payée' }) ?? 0;
+  if (!fige) {
+    donnees.sommeAr = nombre(corps.sommeAr, { min: 0, nom: 'Somme payée' }) ?? 0;
+    donnees.sommeTotale = nombre(corps.sommeTotale, { min: 0, nom: 'Total de la commande' });
+  }
   return donnees;
 }
 
@@ -209,11 +233,8 @@ routeurAchats.delete('/:id', async (req, res) => {
   const achat = await chargerAchat(id);
   const vendue = achat.DetailAchat.some((l) => l.DetailVente.length > 0);
   if (vendue) throw new ErreurHttp(409, 'Des ventes sont rattachées à cette commande, suppression impossible');
-  await prisma.$transaction([
-    prisma.frais.deleteMany({ where: { Boost: { idAchat: id } } }),
-    prisma.boost.deleteMany({ where: { idAchat: id } }),
-    prisma.achat.delete({ where: { id } }),
-  ]);
+  // Lignes, frais et budgets partent en cascade ; les publications sont simplement détachées
+  await prisma.achat.delete({ where: { id } });
   res.status(204).end();
 });
 
@@ -279,6 +300,10 @@ routeurAchats.put('/:id/tarification', async (req, res) => {
 
   const lignesCorps = Array.isArray(req.body?.lignes) ? req.body.lignes : [];
   const sommeAr = nombre(req.body?.sommeAr, { min: 0, nom: 'Somme payée' }) ?? Number(achat.sommeAr);
+  const sommeTotale =
+    'sommeTotale' in (req.body ?? {})
+      ? nombre(req.body.sommeTotale, { min: 0, nom: 'Total de la commande' })
+      : achat.sommeTotale === null ? null : Number(achat.sommeTotale);
   if (figer) {
     exiger(achat.DetailAchat.length > 0, 'Ajoutez au moins un produit avant de figer la tarification');
     exiger(sommeAr > 0, 'Renseignez la somme payée en Ariary pour calculer le taux');
@@ -296,7 +321,7 @@ routeurAchats.put('/:id/tarification', async (req, res) => {
   });
 
   const somme = arrondir(sommeLignes(lignes));
-  const taux = tauxEuro(somme, sommeAr);
+  const taux = tauxEuro(sommeTotale ?? somme, sommeAr);
   if (figer) exiger(taux, 'La somme en euro doit être supérieure à zéro');
 
   // Étape 2 : le prix de vente saisi fait foi, la marge en découle
@@ -316,7 +341,7 @@ routeurAchats.put('/:id/tarification', async (req, res) => {
     }
     await tx.achat.update({
       where: { id },
-      data: { somme, sommeAr, ...(figer ? { dateFigement: maintenant } : {}) },
+      data: { somme, sommeTotale, sommeAr, ...(figer ? { dateFigement: maintenant } : {}) },
     });
   });
 

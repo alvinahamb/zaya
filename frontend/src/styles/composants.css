@@ -293,6 +293,25 @@
   cursor: pointer;
 }
 
+.choix-reseaux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.choix-reseaux .case {
+  padding: 0 12px 0 8px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-pilule);
+  background: var(--surface);
+  transition: border-color var(--transition), background var(--transition);
+}
+.choix-reseaux .case:has(input:checked) {
+  border-color: var(--principale);
+  background: var(--peche-claire);
+  color: var(--principale);
+  font-weight: 500;
+}
+
 .formulaire {
   display: flex;
   flex-direction: column;

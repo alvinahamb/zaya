@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { CheckCircle2, Bell } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
-import { Accueil as ApiAccueil, Achats, Publications, messageErreur } from '../services/api.js';
+import { Accueil as ApiAccueil, Achats, Publications, Livraisons, messageErreur } from '../services/api.js';
 import { useApi } from '../lib/hooks.js';
-import { ariary, nombre, dateLongue, dateCourte, versInputDate, aujourdhuiISO } from '../lib/format.js';
+import { ariary, nombre, dateLongue, dateCourte, versInputDate, aujourdhuiISO, SUIVANT_LIVRAISON } from '../lib/format.js';
 import { Page } from '../components/layout/Page.jsx';
 import { Carte, Indicateur } from '../components/ui/Carte.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
@@ -18,6 +18,9 @@ async function accomplir(tache) {
   if (tache.type === 'publication') {
     const suivant = STATUT_SUIVANT[tache.cible.statut] ?? 'publiee';
     await Publications.changerStatut(tache.cible.idPublication, suivant);
+  } else if (tache.type === 'livraison') {
+    const suivant = SUIVANT_LIVRAISON[tache.cible.statut];
+    if (suivant) await Livraisons.changerStatut(tache.cible.idLivraison, suivant.statut);
   } else if (tache.type === 'achat') {
     const achat = await Achats.lire(tache.cible.idAchat);
     await Achats.modifier(achat.id, {
@@ -87,6 +90,16 @@ export function Accueil() {
   };
 
   const prenom = (utilisateur?.nom || 'Admin').split(' ')[0];
+  // Pas de liste ici : juste savoir s'il y a quelque chose à faire aujourd'hui côté livraisons
+  const livraisonsJour = donnees?.livraisonsDuJour ?? [];
+  const compter = (statut) => livraisonsJour.filter((l) => l.statut === statut).length;
+  const resumeLivraisons = livraisonsJour.length
+    ? [
+        compter('a_programmer') && `${compter('a_programmer')} à appeler`,
+        compter('programmee') && `${compter('programmee')} prévue${compter('programmee') > 1 ? 's' : ''}`,
+        compter('en_cours') && `${compter('en_cours')} en cours`,
+      ].filter(Boolean).join(' · ')
+    : 'Rien de prévu';
   const taches = donnees?.taches ?? [];
   const idsTaches = new Set(taches.map((t) => t.id));
   const aSurveiller = (donnees?.notifications ?? []).filter((n) => !idsTaches.has(n.id));
@@ -102,7 +115,12 @@ export function Accueil() {
             <div className="indicateurs espace-bas">
               <Indicateur libelle="Ventes du mois" valeur={ariary(donnees.kpis.caMoisAr)} sous={`${nombre(donnees.kpis.nbVentesMois)} vente${donnees.kpis.nbVentesMois > 1 ? 's' : ''}`} />
               <Indicateur libelle="Commandes en cours" valeur={nombre(donnees.kpis.achatsEnCours)} sous="Non reçues" />
-              <Indicateur libelle="Publications à venir" valeur={nombre(donnees.kpis.publicationsAVenir)} sous="Trois prochains jours" />
+              <Indicateur
+                libelle="Livraisons aujourd'hui"
+                valeur={nombre(livraisonsJour.length)}
+                couleur={livraisonsJour.some((l) => l.enRetard) ? 'var(--danger)' : livraisonsJour.length ? 'var(--principale)' : undefined}
+                sous={resumeLivraisons}
+              />
               <Indicateur libelle="Tâches du jour" valeur={nombre(taches.length)} sous={taches.filter((t) => t.enRetard).length ? `${taches.filter((t) => t.enRetard).length} en retard` : 'À jour'} />
             </div>
 

@@ -53,5 +53,5 @@ export const routeurCategories = routeurReference({
 export const routeurReseaux = routeurReference({
   modele: 'reseau',
   champsOptionnels: ['lienCompte'],
-  compte: { Vente: true, Boost: true, Publication: true },
+  compte: { VenteReseau: true, BoostReseau: true, PublicationReseau: true, ClientReseau: true },
 });

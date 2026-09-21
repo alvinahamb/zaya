@@ -19,7 +19,7 @@ routeurStats.get('/', async (req, res) => {
   const lignes = await prisma.detailVente.findMany({
     where: { Vente: { dateVente: { gte: new Date(du), lte: new Date(au) } } },
     include: {
-      Vente: { include: { DetailVente: true, Reseau: true } },
+      Vente: { include: { DetailVente: true, VenteReseau: { include: { Reseau: true } } } },
       DetailAchat: {
         include: {
           Achat: { select: { id: true, nom: true, somme: true, sommeAr: true } },
@@ -56,7 +56,9 @@ routeurStats.get('/', async (req, res) => {
 
     ajouter(groupes.parProduit, produit.id, produit.nom, ca, cout, l.quantite);
     ajouter(groupes.parCategorie, produit.Categorie.id, produit.Categorie.nom, ca, cout, l.quantite);
-    ajouter(groupes.parReseau, l.Vente.Reseau.id, l.Vente.Reseau.nom, ca, cout, l.quantite);
+    // Une vente sur plusieurs réseaux : répartie à parts égales entre eux
+    const reseaux = l.Vente.VenteReseau.map((x) => x.Reseau);
+    for (const r of reseaux) ajouter(groupes.parReseau, r.id, r.nom, ca / reseaux.length, cout === null ? null : cout / reseaux.length, l.quantite / reseaux.length);
     ajouter(groupes.parPeriode, clePeriode(l.Vente.dateVente), clePeriode(l.Vente.dateVente), ca, cout, l.quantite);
   }
 

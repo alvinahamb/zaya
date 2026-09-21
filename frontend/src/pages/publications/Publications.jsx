@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, ChevronLeft, ChevronRight, CalendarDays, LayoutGrid, Megaphone, ExternalLink, Pin } from 'lucide-react';
-import { Publications as ApiPublications, Reseaux, Achats } from '../../services/api.js';
+import { useCallback, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Plus, ChevronLeft, ChevronRight, CalendarDays, LayoutGrid, Megaphone, ExternalLink, Pin, MoreHorizontal, Pencil, Trash2, RotateCcw } from 'lucide-react';
+import { Publications as ApiPublications, Reseaux, Achats, messageErreur } from '../../services/api.js';
 import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { dateHeure, aujourdhuiISO, LIBELLES_STATUT_PUBLICATION } from '../../lib/format.js';
@@ -11,7 +11,8 @@ import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Badge, BadgeStatutPublication } from '../../components/ui/Badge.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport } from '../../components/ui/Divers.jsx';
+import { Confirmation } from '../../components/ui/Modale.jsx';
+import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
 import { CalendrierMois, CalendrierSemaine } from './Calendrier.jsx';
@@ -22,10 +23,18 @@ const COLONNES_EXPORT = [
   { cle: 'dateHeurePublication', titre: 'Date', valeur: (p) => dateHeure(p.dateHeurePublication) },
   { cle: 'nom', titre: 'Nom' },
   { cle: 'statut', titre: 'Statut', valeur: (p) => LIBELLES_STATUT_PUBLICATION[p.statut] },
-  { cle: 'reseau', titre: 'Réseau', valeur: (p) => p.Reseau?.nom },
-  { cle: 'achat', titre: 'Commande', valeur: (p) => p.Achat?.nom },
+  { cle: 'reseaux', titre: 'Réseaux', valeur: (p) => p.reseaux.map((r) => r.nom).join(', ') },
+  { cle: 'achat', titre: 'Commande', valeur: (p) => p.achat?.nom },
+  { cle: 'totalBoostsAr', titre: 'Boosts (Ar)', align: 'droite' },
   { cle: 'lienPinterest', titre: 'Lien Pinterest' },
   { cle: 'lienContenu', titre: 'Lien contenu' },
+];
+
+const FILTRES_STATUT = [
+  { valeur: 'a_faire', libelle: 'À faire' },
+  { valeur: 'creee', libelle: 'Créées' },
+  { valeur: 'publiee', libelle: 'Publiées' },
+  { valeur: 'supprimee', libelle: 'Corbeille' },
 ];
 
 function LienIcone({ href, icone: Icone, children }) {
@@ -38,22 +47,48 @@ function LienIcone({ href, icone: Icone, children }) {
   );
 }
 
-/** Carte d'une publication, avec l'aperçu de l'idée Pinterest en visuel. */
-function CartePublication({ publication: p, onOuvrir }) {
+/** Carte d'une publication : clic → fiche ; menu ⋯ → modifier, corbeille, restaurer. */
+function CartePublication({ publication: p, onOuvrir, onModifier, onCorbeille, onRestaurer, onSupprimerDefinitivement }) {
+  const supprimee = p.statut === 'supprimee';
   return (
-    <div className="carte carte--cliquable carte-pub" role="button" tabIndex={0} onClick={() => onOuvrir(p)} onKeyDown={(e) => e.key === 'Enter' && onOuvrir(p)}>
+    <div
+      className={`carte carte--cliquable carte-pub ${supprimee ? 'carte-pub--supprimee' : ''}`}
+      role="link"
+      tabIndex={0}
+      onClick={() => onOuvrir(p)}
+      onKeyDown={(e) => e.key === 'Enter' && onOuvrir(p)}
+    >
       <div className="carte-pub__visuel">
         <ApercuLien url={p.lienPinterest} alt="" />
         <span className="carte-pub__statut">
           <BadgeStatutPublication statut={p.statut} />
         </span>
+        <div className="carte-pub__menu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+          <MenuDeroulant
+            bouton={({ basculer, ouvert }) => (
+              <Bouton variante="discret" taille="petit" icone={MoreHorizontal} onClick={basculer} aria-label={`Actions pour ${p.nom}`} aria-expanded={ouvert} />
+            )}
+          >
+            {supprimee ? (
+              <>
+                <ElementMenu icone={RotateCcw} onClick={() => onRestaurer(p)}>Restaurer</ElementMenu>
+                <ElementMenu icone={Trash2} onClick={() => onSupprimerDefinitivement(p)}>Supprimer définitivement</ElementMenu>
+              </>
+            ) : (
+              <>
+                <ElementMenu icone={Pencil} onClick={() => onModifier(p)}>Modifier</ElementMenu>
+                <ElementMenu icone={Trash2} onClick={() => onCorbeille(p)}>Mettre à la corbeille</ElementMenu>
+              </>
+            )}
+          </MenuDeroulant>
+        </div>
       </div>
       <div className="carte-produit__corps">
         <div className="carte-produit__nom">{p.nom}</div>
         <div className="tres-petit secondaire">{dateHeure(p.dateHeurePublication)}</div>
         <div className="flex" style={{ gap: 6, flexWrap: 'wrap' }}>
-          {p.Reseau && <Badge ton="info">{p.Reseau.nom}</Badge>}
-          {p.Achat && <Link to={`/achats/${p.Achat.id}`} className="tres-petit" onClick={(e) => e.stopPropagation()}>{p.Achat.nom}</Link>}
+          {p.reseaux.map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
+          {p.achat && <Link to={`/achats/${p.achat.id}`} className="tres-petit" onClick={(e) => e.stopPropagation()}>{p.achat.nom}</Link>}
         </div>
         <div className="liens-pub">
           <LienIcone href={p.lienPinterest} icone={Pin}>Pinterest</LienIcone>
@@ -66,6 +101,7 @@ function CartePublication({ publication: p, onOuvrir }) {
 
 export function Publications() {
   const { notifier } = useToast();
+  const naviguer = useNavigate();
   const [params, setParams] = useSearchParams();
   const [onglet, setOnglet] = useState(() => (params.get('vue') === 'liste' ? 'liste' : 'calendrier'));
   const [vueCalendrier, setVueCalendrier] = useState(() => {
@@ -78,15 +114,18 @@ export function Publications() {
   const [curseur, setCurseur] = useState(() => new Date());
   const [statut, setStatut] = useState('');
   const [reseau, setReseau] = useState('');
-  const [formulaire, setFormulaire] = useState(null); // { publication?, date? }
+  const [formulaire, setFormulaire] = useState(null); // { publication?, date?, idAchat? }
+  const [confirmation, setConfirmation] = useState(null); // { type: 'corbeille' | 'definitif', publication }
+  const [enCours, setEnCours] = useState(false);
 
-  // « ?nouveau=1 » (bouton Nouveau de la barre) ouvre directement le formulaire
+  // « ?nouveau=1 » (bouton Nouveau, ou depuis une commande avec ?achat=) ouvre le formulaire
   const nouveauDemande = params.get('nouveau') === '1';
-  const formulaireOuvert = formulaire ?? (nouveauDemande ? { date: aujourdhuiISO() } : null);
+  const formulaireOuvert = formulaire ?? (nouveauDemande ? { date: aujourdhuiISO(), idAchat: params.get('achat') || undefined } : null);
   const fermerFormulaire = () => {
     setFormulaire(null);
     if (nouveauDemande) {
       params.delete('nouveau');
+      params.delete('achat');
       setParams(params, { replace: true });
     }
   };
@@ -116,30 +155,14 @@ export function Publications() {
   }, [onglet, vueCalendrier, curseur]);
 
   const charger = useCallback(
-    () => ApiPublications.lister({ ...periode, statut: statut || undefined, reseau: reseau || undefined }),
-    [periode, statut, reseau],
+    () => ApiPublications.lister({ ...periode, statut: onglet === 'liste' && statut ? statut : undefined, reseau: reseau || undefined }),
+    [periode, onglet, statut, reseau],
   );
   const chargerReseaux = useCallback(() => Reseaux.lister(), []);
   const chargerAchats = useCallback(() => Achats.lister(), []);
   const { donnees: publications, chargement, erreur, recharger } = useApi(charger);
   const { donnees: reseaux } = useApi(chargerReseaux);
   const { donnees: achats } = useApi(chargerAchats);
-
-  // « ?ouvrir=<id> » depuis une notification ou la recherche : on charge puis on ouvre
-  const idAOuvrir = params.get('ouvrir');
-  useEffect(() => {
-    if (!idAOuvrir) return;
-    ApiPublications.lire(idAOuvrir)
-      .then((p) => {
-        setFormulaire({ publication: p });
-        if (p.dateHeurePublication) setCurseur(new Date(p.dateHeurePublication));
-      })
-      .catch(() => notifier('Publication introuvable', 'erreur'));
-    setParams((precedents) => {
-      precedents.delete('ouvrir');
-      return precedents;
-    }, { replace: true });
-  }, [idAOuvrir, setParams, notifier]);
 
   const deplacer = (sens) => {
     const d = new Date(curseur);
@@ -155,7 +178,21 @@ export function Publications() {
 
   const listeTriee = useMemo(() => [...(publications ?? [])].sort((a, b) => (a.dateHeurePublication < b.dateHeurePublication ? 1 : -1)), [publications]);
   const ouvrirNouveau = (date = aujourdhuiISO()) => setFormulaire({ date });
-  const ouvrir = (p) => setFormulaire({ publication: p });
+  const ouvrirFiche = (p) => naviguer(`/publications/${p.id}`);
+
+  const agir = async (action, message) => {
+    setEnCours(true);
+    try {
+      await action();
+      notifier(message);
+      recharger();
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+    } finally {
+      setEnCours(false);
+      setConfirmation(null);
+    }
+  };
 
   return (
     <Page titre="Publications" actions={<Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>}>
@@ -180,7 +217,7 @@ export function Publications() {
           </>
         ) : (
           <>
-            <Selection value={statut} onChange={(e) => setStatut(e.target.value)} placeholder="Tous les statuts" options={Object.entries(LIBELLES_STATUT_PUBLICATION).map(([valeur, libelle]) => ({ valeur, libelle }))} aria-label="Filtrer par statut" />
+            <Selection value={statut} onChange={(e) => setStatut(e.target.value)} placeholder="Tous les statuts" options={FILTRES_STATUT} aria-label="Filtrer par statut" />
             <Selection value={reseau} onChange={(e) => setReseau(e.target.value)} placeholder="Tous les réseaux" options={(reseaux ?? []).map((r) => ({ valeur: String(r.id), libelle: r.nom }))} aria-label="Filtrer par réseau" />
             <div className="pousser">
               <BoutonsExport nomFichier="publications" titre="Publications" colonnes={COLONNES_EXPORT} lignes={listeTriee} />
@@ -194,17 +231,32 @@ export function Publications() {
         <Chargement />
       ) : onglet === 'calendrier' ? (
         vueCalendrier === 'mois' ? (
-          <CalendrierMois annee={curseur.getFullYear()} mois={curseur.getMonth()} publications={publications ?? []} onJour={ouvrirNouveau} onOuvrir={ouvrir} />
+          <CalendrierMois annee={curseur.getFullYear()} mois={curseur.getMonth()} publications={publications ?? []} onJour={ouvrirNouveau} onOuvrir={ouvrirFiche} />
         ) : (
-          <CalendrierSemaine depart={debutSemaine(curseur)} publications={publications ?? []} onJour={ouvrirNouveau} onOuvrir={ouvrir} />
+          <CalendrierSemaine depart={debutSemaine(curseur)} publications={publications ?? []} onJour={ouvrirNouveau} onOuvrir={ouvrirFiche} />
         )
       ) : listeTriee.length === 0 ? (
         <Carte nu>
-          <EtatVide icone={Megaphone} titre="Aucune publication" description="Planifiez vos contenus à créer et à publier." action={<Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>} />
+          <EtatVide
+            icone={Megaphone}
+            titre={statut === 'supprimee' ? 'La corbeille est vide' : 'Aucune publication'}
+            description={statut === 'supprimee' ? undefined : 'Planifiez vos contenus à créer et à publier.'}
+            action={statut !== 'supprimee' && <Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>}
+          />
         </Carte>
       ) : (
         <div className="grille-produits">
-          {listeTriee.map((p) => <CartePublication key={p.id} publication={p} onOuvrir={ouvrir} />)}
+          {listeTriee.map((p) => (
+            <CartePublication
+              key={p.id}
+              publication={p}
+              onOuvrir={ouvrirFiche}
+              onModifier={(pub) => setFormulaire({ publication: pub })}
+              onCorbeille={(pub) => setConfirmation({ type: 'corbeille', publication: pub })}
+              onRestaurer={(pub) => agir(() => ApiPublications.restaurer(pub.id), 'Publication restaurée')}
+              onSupprimerDefinitivement={(pub) => setConfirmation({ type: 'definitif', publication: pub })}
+            />
+          ))}
         </div>
       )}
 
@@ -212,19 +264,37 @@ export function Publications() {
         ouvert={formulaireOuvert !== null}
         publication={formulaireOuvert?.publication}
         dateParDefaut={formulaireOuvert?.date}
+        achatParDefaut={formulaireOuvert?.idAchat}
         reseaux={reseaux ?? []}
         achats={achats ?? []}
         onFermer={fermerFormulaire}
-        onEnregistre={() => {
+        onEnregistre={(p) => {
+          const creation = !formulaireOuvert?.publication;
           fermerFormulaire();
           notifier('Publication enregistrée');
-          recharger();
+          if (creation) naviguer(`/publications/${p.id}`);
+          else recharger();
         }}
-        onSupprime={() => {
-          fermerFormulaire();
-          notifier('Publication supprimée');
-          recharger();
-        }}
+      />
+      <Confirmation
+        ouverte={confirmation?.type === 'corbeille'}
+        titre="Mettre à la corbeille ?"
+        message={`« ${confirmation?.publication?.nom} » sort du calendrier et des tâches. Vous pourrez la restaurer depuis le filtre « Corbeille ».`}
+        libelleConfirmer="Mettre à la corbeille"
+        ton="danger"
+        chargement={enCours}
+        onConfirmer={() => agir(() => ApiPublications.supprimer(confirmation.publication.id), 'Publication mise à la corbeille')}
+        onAnnuler={() => setConfirmation(null)}
+      />
+      <Confirmation
+        ouverte={confirmation?.type === 'definitif'}
+        titre="Supprimer définitivement ?"
+        message={`« ${confirmation?.publication?.nom} » et ses boosts seront supprimés. Cette action est irréversible.`}
+        libelleConfirmer="Supprimer définitivement"
+        ton="danger"
+        chargement={enCours}
+        onConfirmer={() => agir(() => ApiPublications.supprimer(confirmation.publication.id, true), 'Publication supprimée')}
+        onAnnuler={() => setConfirmation(null)}
       />
     </Page>
   );

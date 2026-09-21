@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { ErreurHttp, exiger, entierId, nombre, date } from '../lib/erreurs.js';
+import { ErreurHttp, exiger, entierId, nombre, date, listeIds } from '../lib/erreurs.js';
 import { arrondir, stockRestant, venteNette } from '../lib/calculs.js';
 
 export const routeurVentes = Router();
 
 const inclusionVente = {
-  Reseau: true,
+  VenteReseau: { include: { Reseau: true } },
+  Client: { select: { id: true, nom: true, telephone: true, adresse: true } },
+  Livraison: true,
   DetailVente: {
     include: {
       DetailAchat: {
@@ -21,7 +23,7 @@ const inclusionVente = {
 };
 
 function enrichirVente(vente) {
-  const { DetailVente, Reseau, ...reste } = vente;
+  const { DetailVente, VenteReseau, Client, Livraison, ...reste } = vente;
   const lignes = DetailVente.map((dv) => ({
     id: dv.id,
     idDetailAchat: dv.idDetailAchat,
@@ -34,7 +36,10 @@ function enrichirVente(vente) {
   }));
   return {
     ...reste,
-    reseau: Reseau,
+    reseaux: (VenteReseau ?? []).map((x) => x.Reseau),
+    idReseaux: (VenteReseau ?? []).map((x) => x.idReseau),
+    client: Client ?? null,
+    livraison: Livraison ?? null,
     nbArticles: lignes.reduce((s, l) => s + l.quantite, 0),
     brutAr: lignes.reduce((s, l) => s + l.totalAr, 0),
     lignes,
@@ -45,10 +50,13 @@ function lireEntete(corps = {}) {
   const dateVente = date(corps.dateVente, 'Date de vente');
   exiger(dateVente, 'La date de vente est obligatoire');
   return {
-    nom: corps.nom ? String(corps.nom).trim() : null,
-    idReseau: entierId(corps.idReseau, 'Réseau'),
-    dateVente,
-    reductionAr: arrondir(nombre(corps.reductionAr, { min: 0, nom: 'Réduction' }) ?? 0),
+    donnees: {
+      nom: corps.nom ? String(corps.nom).trim() : null,
+      idClient: corps.idClient ? entierId(corps.idClient, 'Client') : null,
+      dateVente,
+      reductionAr: arrondir(nombre(corps.reductionAr, { min: 0, nom: 'Réduction' }) ?? 0),
+    },
+    idReseaux: listeIds(corps.idReseaux, { nom: 'Réseau', minimum: 1 }),
   };
 }
 
@@ -105,14 +113,15 @@ async function chargerVente(id) {
 }
 
 routeurVentes.get('/', async (req, res) => {
-  const { du, au, reseau } = req.query;
+  const { du, au, reseau, client } = req.query;
   const where = {};
+  if (client) where.idClient = entierId(client, 'Client');
   if (du || au) {
     where.dateVente = {};
     if (du) where.dateVente.gte = date(du, 'Date de début');
     if (au) where.dateVente.lte = date(au, 'Date de fin');
   }
-  if (reseau) where.idReseau = entierId(reseau, 'Réseau');
+  if (reseau) where.VenteReseau = { some: { idReseau: entierId(reseau, 'Réseau') } };
   const ventes = await prisma.vente.findMany({
     where,
     include: inclusionVente,
@@ -126,11 +135,16 @@ routeurVentes.get('/:id', async (req, res) => {
 });
 
 routeurVentes.post('/', async (req, res) => {
-  const entete = lireEntete(req.body);
+  const { donnees: entete, idReseaux } = lireEntete(req.body);
   const id = await prisma.$transaction(async (tx) => {
     const lignes = await lireLignes(req.body?.lignes, tx);
     const vente = await tx.vente.create({
-      data: { ...entete, sommeAr: calculerSomme(lignes, entete.reductionAr), DetailVente: { create: lignes } },
+      data: {
+        ...entete,
+        sommeAr: calculerSomme(lignes, entete.reductionAr),
+        DetailVente: { create: lignes },
+        VenteReseau: { create: idReseaux.map((idReseau) => ({ idReseau })) },
+      },
     });
     return vente.id;
   });
@@ -140,13 +154,18 @@ routeurVentes.post('/', async (req, res) => {
 routeurVentes.put('/:id', async (req, res) => {
   const id = entierId(req.params.id);
   await chargerVente(id);
-  const entete = lireEntete(req.body);
+  const { donnees: entete, idReseaux } = lireEntete(req.body);
   await prisma.$transaction(async (tx) => {
     const lignes = await lireLignes(req.body?.lignes, tx, id);
     await tx.detailVente.deleteMany({ where: { idVente: id } });
     await tx.vente.update({
       where: { id },
-      data: { ...entete, sommeAr: calculerSomme(lignes, entete.reductionAr), DetailVente: { create: lignes } },
+      data: {
+        ...entete,
+        sommeAr: calculerSomme(lignes, entete.reductionAr),
+        DetailVente: { create: lignes },
+        VenteReseau: { deleteMany: {}, create: idReseaux.map((idReseau) => ({ idReseau })) },
+      },
     });
   });
   res.json(enrichirVente(await chargerVente(id)));

@@ -1,56 +1,61 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
-import { exiger, entierId, nombre, date } from '../lib/erreurs.js';
+import { exiger, entierId, nombre, date, listeIds } from '../lib/erreurs.js';
 import { arrondir } from '../lib/calculs.js';
 
 export const routeurBoosts = Router();
 
 const inclusionBoost = {
-  Reseau: true,
+  BoostReseau: { include: { Reseau: true } },
   Frais: { orderBy: { id: 'asc' } },
-  Achat: { select: { id: true, nom: true } },
+  Publication: { select: { id: true, nom: true, idAchat: true } },
 };
+
+function enrichirBoost({ BoostReseau, ...b }) {
+  return { ...b, reseaux: BoostReseau.map((x) => x.Reseau), idReseaux: BoostReseau.map((x) => x.idReseau) };
+}
 
 function lireCorps(corps = {}, { creation = false } = {}) {
   const montantAr = nombre(corps.montantAr, { min: 0, nom: 'Montant' });
   exiger(montantAr !== null, 'Le montant est obligatoire');
   const donnees = {
     nom: corps.nom ? String(corps.nom).trim() : null,
-    idReseau: entierId(corps.idReseau, 'Réseau'),
     dateBoost: date(corps.dateBoost, 'Date'),
     montantAr: arrondir(montantAr),
     raison: corps.raison ? String(corps.raison).trim() : null,
   };
-  // Un boost est toujours rattaché à une commande, fixée à la création
-  if (creation) donnees.idAchat = entierId(corps.idAchat, 'Commande');
-  return donnees;
+  // Un boost promeut une publication, fixée à la création
+  if (creation) donnees.idPublication = entierId(corps.idPublication, 'Publication');
+  return { donnees, idReseaux: listeIds(corps.idReseaux, { nom: 'Réseau', minimum: 1 }) };
 }
 
 routeurBoosts.get('/', async (req, res) => {
-  const where = req.query.achat ? { idAchat: entierId(req.query.achat, 'Commande') } : {};
+  const where = req.query.publication ? { idPublication: entierId(req.query.publication, 'Publication') } : {};
   const boosts = await prisma.boost.findMany({
     where,
     include: inclusionBoost,
     orderBy: [{ dateBoost: 'desc' }, { id: 'desc' }],
   });
-  res.json(boosts);
+  res.json(boosts.map(enrichirBoost));
 });
 
 routeurBoosts.post('/', async (req, res) => {
+  const { donnees, idReseaux } = lireCorps(req.body, { creation: true });
   const boost = await prisma.boost.create({
-    data: lireCorps(req.body, { creation: true }),
+    data: { ...donnees, BoostReseau: { create: idReseaux.map((idReseau) => ({ idReseau })) } },
     include: inclusionBoost,
   });
-  res.status(201).json(boost);
+  res.status(201).json(enrichirBoost(boost));
 });
 
 routeurBoosts.put('/:id', async (req, res) => {
+  const { donnees, idReseaux } = lireCorps(req.body);
   const boost = await prisma.boost.update({
     where: { id: entierId(req.params.id) },
-    data: lireCorps(req.body),
+    data: { ...donnees, BoostReseau: { deleteMany: {}, create: idReseaux.map((idReseau) => ({ idReseau })) } },
     include: inclusionBoost,
   });
-  res.json(boost);
+  res.json(enrichirBoost(boost));
 });
 
 routeurBoosts.delete('/:id', async (req, res) => {

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Search, Save, Package } from 'lucide-react';
-import { Ventes, Reseaux, Achats } from '../../services/api.js';
+import { Plus, Trash2, Search, Save, Package, UserPlus } from 'lucide-react';
+import { Ventes, Reseaux, Achats, Clients } from '../../services/api.js';
 import { useApi, useFermerDehors, useFormulaire } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { ariary, euro, nombre, aujourdhuiISO, versInputDate, dateCourte } from '../../lib/format.js';
@@ -10,6 +10,8 @@ import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Champ, Saisie, SaisieMontant, Selection } from '../../components/ui/Champs.jsx';
 import { Chargement, Encart, EtatVide, ImageProduit } from '../../components/ui/Divers.jsx';
+import { FormulaireClient } from '../parametres/FormulaireClient.jsx';
+import { ChoixReseaux } from '../../components/ui/ChoixReseaux.jsx';
 
 /** Choix d'un article parmi les lignes de commande figées avec du stock. */
 function SelecteurLigne({ disponibles, valeur, onChoisir }) {
@@ -74,7 +76,8 @@ const ligneVide = () => ({ cle: Math.random().toString(36).slice(2), idDetailAch
 
 const depuisVente = (vente) => ({
   nom: vente.nom ?? '',
-  idReseau: String(vente.idReseau),
+  idReseaux: vente.idReseaux ?? [],
+  idClient: vente.idClient ? String(vente.idClient) : '',
   dateVente: versInputDate(vente.dateVente),
   reductionAr: Number(vente.reductionAr) ? vente.reductionAr : '',
 });
@@ -88,11 +91,14 @@ export function FormulaireVente() {
   const chargerReseaux = useCallback(() => Reseaux.lister(), []);
   const chargerDisponibles = useCallback(() => Achats.lignesDisponibles(), []);
   const chargerVente = useCallback(() => (id ? Ventes.lire(id) : Promise.resolve(null)), [id]);
+  const chargerClients = useCallback(() => Clients.lister(), []);
   const { donnees: reseaux } = useApi(chargerReseaux);
+  const { donnees: clients, recharger: rechargerClients } = useApi(chargerClients);
+  const [nouveauClient, setNouveauClient] = useState(false);
   const { donnees: disponibles, chargement: chargementDisponibles } = useApi(chargerDisponibles);
   const { donnees: vente, chargement: chargementVente, erreur: erreurVente } = useApi(chargerVente);
 
-  const f = useFormulaire({ nom: '', idReseau: '', dateVente: aujourdhuiISO(), reductionAr: '' });
+  const f = useFormulaire({ nom: '', idReseaux: [], idClient: '', dateVente: aujourdhuiISO(), reductionAr: '' });
   const [lignes, setLignes] = useState([ligneVide()]);
   const [initialise, setInitialise] = useState(false);
 
@@ -103,7 +109,7 @@ export function FormulaireVente() {
       f.reinitialiser(depuisVente(vente));
       setLignes(vente.lignes.map((l) => ({ cle: String(l.id), idDetailAchat: l.idDetailAchat, quantite: String(l.quantite), prixVenteAr: String(l.prixVenteAr) })));
     } else {
-      f.changer('idReseau', reseaux[0] ? String(reseaux[0].id) : '');
+      f.changer('idReseaux', reseaux[0] ? [reseaux[0].id] : []);
     }
   }
 
@@ -175,14 +181,22 @@ export function FormulaireVente() {
       <form className="colonne" style={{ gap: 20 }} onSubmit={soumettre} noValidate>
         <Carte titre="Informations">
           <div className="formulaire__ligne">
-            <Champ libelle="Réseau social" requis>
-              {(idc) => <Selection id={idc} name="idReseau" required value={f.valeurs.idReseau} onChange={f.surChangement} placeholder="Choisir" options={reseaux.map((r) => ({ valeur: String(r.id), libelle: r.nom }))} />}
+            <Champ libelle="Réseaux sociaux" requis aide="Où la vente s'est faite (un ou plusieurs)">
+              <ChoixReseaux reseaux={reseaux} valeurs={f.valeurs.idReseaux} onChange={(v) => f.changer('idReseaux', v)} requis />
             </Champ>
             <Champ libelle="Date" requis>
               {(idc) => <Saisie id={idc} name="dateVente" type="date" required value={f.valeurs.dateVente} onChange={f.surChangement} />}
             </Champ>
             <Champ libelle="Libellé" aide="Facultatif">
               {(idc) => <Saisie id={idc} name="nom" value={f.valeurs.nom} onChange={f.surChangement} placeholder="Ex. Commande Instagram du 20/09" />}
+            </Champ>
+            <Champ libelle="Client" aide="Facultatif : la vente reste anonyme sinon">
+              {(idc) => (
+                <div className="flex" style={{ gap: 6 }}>
+                  <Selection id={idc} name="idClient" value={f.valeurs.idClient} onChange={f.surChangement} placeholder="Client anonyme" options={(clients ?? []).map((c) => ({ valeur: String(c.id), libelle: c.telephone ? `${c.nom} · ${c.telephone}` : c.nom }))} />
+                  <Bouton icone={UserPlus} onClick={() => setNouveauClient(true)} aria-label="Nouveau client" title="Nouveau client" />
+                </div>
+              )}
             </Champ>
           </div>
         </Carte>
@@ -241,10 +255,21 @@ export function FormulaireVente() {
           </div>
         </Carte>
 
+        <FormulaireClient
+          ouvert={nouveauClient}
+          reseaux={reseaux}
+          onFermer={() => setNouveauClient(false)}
+          onEnregistre={(c) => {
+            setNouveauClient(false);
+            f.changer('idClient', String(c.id));
+            rechargerClients();
+          }}
+        />
+
         {f.erreur && <Encart ton="erreur">{f.erreur}</Encart>}
         <div className="formulaire__actions">
           <Bouton onClick={() => naviguer(retour.to)} disabled={f.envoi}>Annuler</Bouton>
-          <Bouton type="submit" variante="principal" icone={Save} chargement={f.envoi} disabled={reseaux.length === 0 || reduction > brut}>
+          <Bouton type="submit" variante="principal" icone={Save} chargement={f.envoi} disabled={f.valeurs.idReseaux.length === 0 || reduction > brut}>
             {modification ? 'Enregistrer' : 'Enregistrer la vente'}
           </Bouton>
         </div>

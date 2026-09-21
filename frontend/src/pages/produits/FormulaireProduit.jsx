@@ -43,6 +43,9 @@ export function FormulaireProduit({ ouvert, produit, categories, onFermer, onEnr
     onFermer();
   };
 
+  // Si les catégories arrivent après l'ouverture, on propose la première par défaut
+  if (ouvert && !produit && !f.valeurs.idCategorie && categories.length) f.changer('idCategorie', String(categories[0].id));
+
   const televerser = async (e) => {
     const fichier = e.target.files?.[0];
     if (!fichier) return;

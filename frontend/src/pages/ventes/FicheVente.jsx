@@ -13,6 +13,8 @@ import { Badge } from '../../components/ui/Badge.jsx';
 import { Montant } from '../../components/ui/Montant.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Chargement, Encart, ImageProduit } from '../../components/ui/Divers.jsx';
+import { SectionLivraison } from './SectionLivraison.jsx';
+import { BadgeStatutLivraison } from '../../components/ui/Badge.jsx';
 
 /** Article vendu, version mobile : visuel, produit, quantité × prix et net. */
 function ArticleVendu({ ligne: l, avecReduction }) {
@@ -42,7 +44,7 @@ export function FicheVente() {
   const { notifier } = useToast();
   const mobile = useMediaQuery(REQUETE_MOBILE);
   const charger = useCallback(() => Ventes.lire(id), [id]);
-  const { donnees: vente, chargement, erreur } = useApi(charger);
+  const { donnees: vente, chargement, erreur, recharger } = useApi(charger);
   const [suppression, setSuppression] = useState(false);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
 
@@ -88,8 +90,13 @@ export function FicheVente() {
     <Page
       retour={{ to: '/ventes', libelle: 'Ventes' }}
       titre={vente.nom || `Vente n° ${vente.id}`}
-      badge={<Badge ton="info">{vente.reseau?.nom}</Badge>}
-      sousTitre={`${dateCourte(vente.dateVente)} · ${nombre(vente.nbArticles)} article${vente.nbArticles > 1 ? 's' : ''}`}
+      badge={
+        <>
+          {(vente.reseaux ?? []).map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
+          {vente.livraison && <BadgeStatutLivraison statut={vente.livraison.statut} />}
+        </>
+      }
+      sousTitre={`${dateCourte(vente.dateVente)} · ${nombre(vente.nbArticles)} article${vente.nbArticles > 1 ? 's' : ''}${vente.client ? ` · ${vente.client.nom}${vente.client.telephone ? ` (${vente.client.telephone})` : ''}` : ' · client anonyme'}`}
       actions={
         <>
           <BoutonLien icone={Pencil} to={`/ventes/${vente.id}/modifier`}>Modifier</BoutonLien>
@@ -97,7 +104,7 @@ export function FicheVente() {
         </>
       }
     >
-      <Carte nu>
+      <Carte nu className="espace-bas">
         {mobile ? (
           <div className="liste-cartes">
             {vente.lignes.map((l) => <ArticleVendu key={l.id} ligne={l} avecReduction={avecReduction} />)}
@@ -122,6 +129,8 @@ export function FicheVente() {
           </div>
         </div>
       </Carte>
+
+      <SectionLivraison vente={vente} recharger={recharger} />
 
       <Confirmation
         ouverte={suppression}

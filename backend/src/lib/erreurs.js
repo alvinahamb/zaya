@@ -33,6 +33,15 @@ export function date(valeur, nom = 'Date') {
   return d;
 }
 
+/** Liste d'identifiants (réseaux sociaux…) : dédoublonnée, `minimum` éléments requis. */
+export function listeIds(valeur, { nom = 'Éléments', minimum = 0 } = {}) {
+  const liste = valeur === undefined || valeur === null ? [] : valeur;
+  exiger(Array.isArray(liste), `${nom} : liste attendue`);
+  const ids = [...new Set(liste.map((id) => entierId(id, nom)))];
+  exiger(ids.length >= minimum, minimum === 1 ? `Choisissez au moins un réseau social` : `${nom} : ${minimum} minimum`);
+  return ids;
+}
+
 export function entierId(valeur, nom = 'Identifiant') {
   const n = Number(valeur);
   if (!Number.isInteger(n) || n <= 0) throw new ErreurHttp(400, `${nom} invalide`);

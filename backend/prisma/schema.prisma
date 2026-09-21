@@ -19,7 +19,8 @@ model Achat {
   sommeAr            Decimal       @default(0) @db.Decimal(14, 2)
   dateFigement       DateTime?     @db.Timestamp(6)
   dateCreation       DateTime      @default(now()) @db.Timestamp(6)
-  Boost              Boost[]
+  sommeTotale        Decimal?      @db.Decimal(12, 2)
+  Budget             Budget[]
   DetailAchat        DetailAchat[]
   Frais              Frais[]
   Publication        Publication[]
@@ -27,20 +28,18 @@ model Achat {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Boost {
-  id           Int       @id @default(autoincrement())
-  nom          String?   @db.VarChar(150)
-  idAchat      Int
-  idReseau     Int
-  dateBoost    DateTime? @db.Date
-  montantAr    Decimal   @default(0) @db.Decimal(14, 2)
-  raison       String?
-  dateCreation DateTime  @default(now()) @db.Timestamp(6)
-  Achat        Achat     @relation(fields: [idAchat], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkBoostAchat")
-  Reseau       Reseau    @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkBoostReseau")
-  Frais        Frais[]
+  id            Int           @id @default(autoincrement())
+  nom           String?       @db.VarChar(150)
+  idPublication Int
+  dateBoost     DateTime?     @db.Date
+  montantAr     Decimal       @default(0) @db.Decimal(14, 2)
+  raison        String?
+  dateCreation  DateTime      @default(now()) @db.Timestamp(6)
+  Publication   Publication   @relation(fields: [idPublication], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkBoostPublication")
+  BoostReseau   BoostReseau[]
+  Frais         Frais[]
 
-  @@index([idAchat], map: "idxBoostAchat")
-  @@index([idReseau], map: "idxBoostReseau")
+  @@index([idPublication], map: "idxBoostPublication")
 }
 
 model Categorie {
@@ -119,32 +118,32 @@ model Produit {
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model Publication {
-  id                   Int       @id @default(autoincrement())
-  nom                  String    @db.VarChar(150)
+  id                   Int                 @id @default(autoincrement())
+  nom                  String              @db.VarChar(150)
   description          String?
-  statut               String    @default("a_faire") @db.VarChar(20)
-  dateHeurePublication DateTime? @db.Timestamp(6)
-  lienPinterest        String?   @db.VarChar(255)
-  lienContenu          String?   @db.VarChar(255)
-  idReseau             Int?
+  statut               String              @default("a_faire") @db.VarChar(20)
+  dateHeurePublication DateTime?           @db.Timestamp(6)
+  lienPinterest        String?             @db.VarChar(255)
+  lienContenu          String?             @db.VarChar(255)
   idAchat              Int?
-  dateCreation         DateTime  @default(now()) @db.Timestamp(6)
-  Achat                Achat?    @relation(fields: [idAchat], references: [id], onUpdate: NoAction, map: "fkPublicationAchat")
-  Reseau               Reseau?   @relation(fields: [idReseau], references: [id], onUpdate: NoAction, map: "fkPublicationReseau")
+  dateCreation         DateTime            @default(now()) @db.Timestamp(6)
+  Boost                Boost[]
+  Achat                Achat?              @relation(fields: [idAchat], references: [id], onUpdate: NoAction, map: "fkPublicationAchat")
+  PublicationReseau    PublicationReseau[]
 
   @@index([idAchat], map: "idxPublicationAchat")
   @@index([dateHeurePublication], map: "idxPublicationDate")
-  @@index([idReseau], map: "idxPublicationReseau")
 }
 
 model Reseau {
-  id           Int           @id @default(autoincrement())
-  nom          String        @unique @db.VarChar(100)
-  lienCompte   String?       @db.VarChar(255)
-  dateCreation DateTime      @default(now()) @db.Timestamp(6)
-  Boost        Boost[]
-  Publication  Publication[]
-  Vente        Vente[]
+  id                Int                 @id @default(autoincrement())
+  nom               String              @unique @db.VarChar(100)
+  lienCompte        String?             @db.VarChar(255)
+  dateCreation      DateTime            @default(now()) @db.Timestamp(6)
+  BoostReseau       BoostReseau[]
+  ClientReseau      ClientReseau[]
+  PublicationReseau PublicationReseau[]
+  VenteReseau       VenteReseau[]
 }
 
 model Utilisateur {
@@ -161,14 +160,104 @@ model Utilisateur {
 model Vente {
   id           Int           @id @default(autoincrement())
   nom          String?       @db.VarChar(150)
-  idReseau     Int
+  idClient     Int?
   dateVente    DateTime      @default(dbgenerated("CURRENT_DATE")) @db.Date
   reductionAr  Decimal       @default(0) @db.Decimal(14, 2)
   sommeAr      Decimal       @default(0) @db.Decimal(14, 2)
   dateCreation DateTime      @default(now()) @db.Timestamp(6)
   DetailVente  DetailVente[]
-  Reseau       Reseau        @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkVenteReseau")
+  Livraison    Livraison?
+  Client       Client?       @relation(fields: [idClient], references: [id], onUpdate: NoAction, map: "fkVenteClient")
+  VenteReseau  VenteReseau[]
 
   @@index([dateVente], map: "idxVenteDate")
-  @@index([idReseau], map: "idxVenteReseau")
+  @@index([idClient], map: "idxVenteClient")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Budget {
+  id           Int       @id @default(autoincrement())
+  idAchat      Int
+  libelle      String?   @db.VarChar(150)
+  montantAr    Decimal   @db.Decimal(14, 2)
+  dateBudget   DateTime? @db.Date
+  dateCreation DateTime  @default(now()) @db.Timestamp(6)
+  Achat        Achat     @relation(fields: [idAchat], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkBudgetAchat")
+
+  @@index([idAchat], map: "idxBudgetAchat")
+}
+
+model PublicationReseau {
+  idPublication Int
+  idReseau      Int
+  Publication   Publication @relation(fields: [idPublication], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkPublicationReseauPublication")
+  Reseau        Reseau      @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkPublicationReseauReseau")
+
+  @@id([idPublication, idReseau], map: "pkPublicationReseau")
+  @@index([idReseau], map: "idxPublicationReseauReseau")
+}
+
+model Client {
+  id           Int            @id @default(autoincrement())
+  nom          String         @db.VarChar(150)
+  telephone    String?        @db.VarChar(30)
+  adresse      String?
+  note         String?
+  dateCreation DateTime       @default(now()) @db.Timestamp(6)
+  ClientReseau ClientReseau[]
+  Livraison    Livraison[]
+  Vente        Vente[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model Livraison {
+  id                    Int       @id @default(autoincrement())
+  idVente               Int       @unique
+  idClient              Int?
+  libelle               String?   @db.VarChar(150)
+  adresse               String?
+  telephone             String?   @db.VarChar(30)
+  livreur               String?   @db.VarChar(100)
+  fraisAr               Decimal   @default(0) @db.Decimal(14, 2)
+  statut                String    @default("a_programmer") @db.VarChar(20)
+  dateHeureAppelLivreur DateTime? @db.Timestamp(6)
+  dateHeureLivraison    DateTime? @db.Timestamp(6)
+  dateHeureLivree       DateTime? @db.Timestamp(6)
+  note                  String?
+  dateCreation          DateTime  @default(now()) @db.Timestamp(6)
+  Client                Client?   @relation(fields: [idClient], references: [id], onUpdate: NoAction, map: "fkLivraisonClient")
+  Vente                 Vente     @relation(fields: [idVente], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkLivraisonVente")
+
+  @@index([idClient], map: "idxLivraisonClient")
+  @@index([statut], map: "idxLivraisonStatut")
+}
+
+model BoostReseau {
+  idBoost  Int
+  idReseau Int
+  Boost    Boost  @relation(fields: [idBoost], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkBoostReseauBoost")
+  Reseau   Reseau @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkBoostReseauReseau")
+
+  @@id([idBoost, idReseau], map: "pkBoostReseau")
+  @@index([idReseau], map: "idxBoostReseauReseau")
+}
+
+model ClientReseau {
+  idClient Int
+  idReseau Int
+  Client   Client @relation(fields: [idClient], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkClientReseauClient")
+  Reseau   Reseau @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkClientReseauReseau")
+
+  @@id([idClient, idReseau], map: "pkClientReseau")
+  @@index([idReseau], map: "idxClientReseauReseau")
+}
+
+model VenteReseau {
+  idVente  Int
+  idReseau Int
+  Reseau   Reseau @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkVenteReseauReseau")
+  Vente    Vente  @relation(fields: [idVente], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkVenteReseauVente")
+
+  @@id([idVente, idReseau], map: "pkVenteReseau")
+  @@index([idReseau], map: "idxVenteReseauReseau")
 }

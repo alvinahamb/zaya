@@ -31,7 +31,7 @@ export function OngletVentes({ achat }) {
                     <Link to={`/ventes/${v.id}`} className="element__titre" style={{ color: 'inherit' }}>
                       {v.nom || `Vente n° ${v.id}`}
                     </Link>
-                    {v.reseau && <Badge ton="info">{v.reseau}</Badge>}
+                    {(v.reseaux ?? []).map((nom) => <Badge key={nom} ton="info">{nom}</Badge>)}
                   </div>
                   <div className="element__meta">{dateCourte(v.dateVente)}</div>
                 </div>

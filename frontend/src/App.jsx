@@ -13,6 +13,7 @@ import { ListeVentes } from './pages/ventes/ListeVentes.jsx';
 import { FormulaireVente } from './pages/ventes/FormulaireVente.jsx';
 import { FicheVente } from './pages/ventes/FicheVente.jsx';
 import { Publications } from './pages/publications/Publications.jsx';
+import { FichePublication } from './pages/publications/FichePublication.jsx';
 import { Statistiques } from './pages/Statistiques.jsx';
 import { Parametres } from './pages/parametres/Parametres.jsx';
 
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="ventes/:id" element={<FicheVente />} />
         <Route path="ventes/:id/modifier" element={<FormulaireVente />} />
         <Route path="publications" element={<Publications />} />
+        <Route path="publications/:id" element={<FichePublication />} />
         <Route path="statistiques" element={<Statistiques />} />
         <Route path="parametres" element={<Parametres />} />
         <Route path="*" element={<Navigate to="/" replace />} />

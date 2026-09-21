@@ -88,9 +88,33 @@ recalculs en direct :
 - **Tâches du jour** et **alertes** dérivées des données : publications à faire,
   commandes attendues ou en retard, ruptures et stocks bas.
 
-Écart au schéma d'origine : la colonne `Achat.dateFigement` (TIMESTAMP,
-nullable) a été ajoutée pour porter l'état « brouillon / figée » demandé par le
-brief de design.
+Écarts au schéma d'origine (tous dans `bdd/table.sql`) :
+
+- `Achat.dateFigement` (TIMESTAMP, nullable) porte l'état « brouillon / figée ».
+- `Achat.sommeTotale` (NUMERIC, nullable) : total de la commande saisi en euro
+  (frais inclus). S'il est renseigné, il fait foi pour le taux d'un euro et le
+  récapitulatif ; sinon la somme calculée des lignes (`Achat.somme`) est
+  utilisée. Figé avec la tarification.
+- `Publication.statut` accepte `supprimee` : la suppression est une corbeille,
+  restaurable ; `?definitif=1` supprime réellement.
+- `PublicationReseau` (table de liaison) remplace `Publication.idReseau` : une
+  publication paraît sur plusieurs réseaux.
+- `Boost.idPublication` remplace `Boost.idAchat` : un boost promeut une
+  publication, la commande se déduit de la publication (`Publication.idAchat`).
+- `Budget` (par commande) : budget de communication, consommé par les boosts des
+  publications de la commande et leurs frais (onglet *Budget* de la commande).
+- Réseaux sociaux multiples partout : `VenteReseau`, `ClientReseau` et
+  `BoostReseau` remplacent les anciens `idReseau` (l'API reçoit `idReseaux: []`,
+  au moins un pour une vente ou un boost). Dans les statistiques par réseau, une
+  vente sur plusieurs réseaux est répartie à parts égales entre eux.
+- `Client` (nom, téléphone, adresse, réseaux, note) et `Vente.idClient` (nullable :
+  la vente reste anonyme par défaut).
+- `Livraison` (une au plus par vente) : adresse et téléphone recopiés du client,
+  livreur, frais, `dateHeureAppelLivreur` (quand appeler les livreurs),
+  `dateHeureLivraison` (prévue), `dateHeureLivree` (réelle, posée au passage à
+  `livree`). Statuts : `a_programmer` → `programmee` → `en_cours` → `livree`, ou
+  `annulee`. Les appels à passer et les livraisons du jour remontent dans les
+  tâches.
 
 ## API
 
@@ -105,9 +129,10 @@ Toutes les routes sont sous `/api`, en JSON, protégées par un jeton JWT
 | Produits                         | CRUD `/produits`, `POST /produits/image` (multipart, 5 Mo)                                         |
 | Achats                           | CRUD `/achats`, lignes `/achats/:id/lignes[/:idLigne]`, `PUT /achats/:id/tarification` (`figer`)   |
 | Lignes vendables                 | `GET /achats/lignes-disponibles`                                                                   |
-| Frais, boosts                    | `POST /frais`, `PUT/DELETE /frais/:id` ; `GET/POST /boosts`, `PUT/DELETE /boosts/:id`               |
-| Ventes                           | CRUD `/ventes` (`?du=&au=&reseau=`)                                                                |
-| Publications                     | CRUD `/publications` (`?du=&au=&statut=&reseau=`), `PATCH /publications/:id/statut`                 |
+| Frais, boosts, budgets           | `POST /frais`, `PUT/DELETE /frais/:id` ; `GET/POST /boosts` (`idPublication`), `PUT/DELETE /boosts/:id` ; `GET/POST /budgets` (`idAchat`), `PUT/DELETE /budgets/:id` |
+| Ventes                           | CRUD `/ventes` (`?du=&au=&reseau=&client=`, `idClient` facultatif)                                 |
+| Clients, livraisons              | CRUD `/clients` (`?q=`) ; CRUD `/livraisons` (`?statut=&du=&au=&client=`), `PATCH /livraisons/:id/statut` |
+| Publications                     | CRUD `/publications` (`?du=&au=&statut=&reseau=&achat=`, corbeille exclue sauf `statut=supprimee`), `PATCH /publications/:id/statut`, `DELETE /publications/:id[?definitif=1]` |
 | Statistiques, accueil, recherche | `GET /stats?du=&au=`, `GET /accueil`, `GET /recherche?q=`                                          |
 | Aperçu de lien                   | `GET /apercu?url=` — image et titre Open Graph (repli sur l'image d'épingle Pinterest), cache 24 h |
 
