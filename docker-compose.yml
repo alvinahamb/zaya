@@ -1,0 +1,67 @@
+# Stack complète : base de données + API + front, avec rechargement à chaud
+# sur le code monté depuis l'hôte.
+#
+#   docker compose up --build
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: zaya-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-zaya}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-zaya}
+      POSTGRES_DB: ${POSTGRES_DB:-zaya}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Joué uniquement à la toute première création du volume
+      - ./bdd/table.sql:/docker-entrypoint-initdb.d/01-table.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-zaya} -d ${POSTGRES_DB:-zaya}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: zaya-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-zaya}:${POSTGRES_PASSWORD:-zaya}@db:5432/${POSTGRES_DB:-zaya}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-change_moi}
+      TZ: ${TZ:-Indian/Antananarivo}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@zaya.local}
+      ADMIN_MOT_DE_PASSE: ${ADMIN_MOT_DE_PASSE:-admin1234}
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
+    volumes:
+      - ./backend:/app
+      # Volumes anonymes : on garde les node_modules et le client Prisma
+      # construits dans l'image plutôt que ceux de l'hôte
+      - /app/node_modules
+      - /app/src/generated
+
+  frontend:
+    build: ./frontend
+    container_name: zaya-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_PROXY_TARGET: http://backend:4000
+      VITE_USE_POLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-5173}:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  pgdata:

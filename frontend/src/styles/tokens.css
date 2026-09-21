@@ -1,0 +1,75 @@
+/* Design tokens — thème clair uniquement. La palette reprend les deux couleurs
+   du logo (rouge profond et crème) ; tout se règle ici. */
+:root {
+  /* Couleurs du logo (assets/logo.png) */
+  --marque-rouge: #951010;
+  --marque-creme: #ffffc5;
+
+  /* Fonds et bordures */
+  --fond: #ffffff;
+  --fond-doux: #fffcf0;
+  --surface: #ffffff;
+  --bordure: #efe6cf;
+  --bordure-forte: #dccfa6;
+
+  /* Principale : le rouge du logo */
+  --principale: var(--marque-rouge);
+  --principale-sombre: #6e0b0b;
+  --sur-principale: #ffffff;
+
+  /* Accents : rouge vif pour les graphiques, doré et crème pour les survols */
+  --corail: #c0392b;
+  --peche: #e9c77a;
+  --peche-claire: #fff8e1;
+
+  --texte: #2b2320;
+  --texte-secondaire: #6b5e59;
+  --texte-discret: #9a8d87;
+
+  --succes: #2e7d5b;
+  --succes-fond: #e6f3ec;
+  --attention: #b7791f;
+  --attention-fond: #fbf1df;
+  --danger: #a61b1b;
+  --danger-fond: #fbe7e7;
+  --info: #3b6ea5;
+  --info-fond: #e7eef7;
+
+  --contraste: #4f7c82;
+
+  /* Graphiques */
+  --graphique-1: var(--marque-rouge);
+  --graphique-2: #d4a017;
+  --graphique-3: var(--peche);
+  --graphique-4: var(--contraste);
+  --graphique-5: var(--info);
+  --graphique-6: var(--corail);
+
+  /* Formes */
+  --rayon-carte: 8px;
+  --rayon-champ: 6px;
+  --rayon-pilule: 999px;
+  --ombre: 0 1px 2px rgba(43, 35, 32, 0.04), 0 2px 8px rgba(43, 35, 32, 0.05);
+  --ombre-haute: 0 12px 32px rgba(43, 35, 32, 0.14);
+
+  /* Typographie */
+  --police: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --taille-texte: 15px;
+  --interligne: 1.5;
+
+  /* Rythme */
+  --transition: 160ms ease;
+  --largeur-max: 1200px;
+  --hauteur-barre-haut: 56px;
+  --hauteur-nav: 44px;
+  --hauteur-barre: calc(var(--hauteur-barre-haut) + var(--hauteur-nav));
+  --gouttiere: 16px;
+  --cible-tactile: 40px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --taille-texte: 16px;
+    --gouttiere: 24px;
+  }
+}
