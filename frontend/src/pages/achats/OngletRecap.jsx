@@ -7,6 +7,9 @@ const couleurMarge = (pct) => (pct === null || pct === undefined ? undefined : p
 /** Six indicateurs du cahier des charges, plus le détail des montants qui les composent. */
 export function OngletRecap({ achat }) {
   const r = achat.recap;
+  // Montants des marges en Ariary, calculés à partir des mêmes bases que les pourcentages du serveur
+  const margeEstimeeAr = r.achatAvecFrais ? r.estimationVente - r.achatAvecFrais : null;
+  const margeReelleAr = r.achatAvecFrais ? r.venteActuelle - r.sommeBoosts - r.achatAvecFrais : null;
   return (
     <div className="colonne" style={{ gap: 20 }}>
       {!achat.fige && (
@@ -17,8 +20,18 @@ export function OngletRecap({ achat }) {
         <Indicateur libelle="Estimation de vente" valeur={ariary(r.estimationVente)} sous={`${nombre(r.quantiteAchetee)} article${r.quantiteAchetee > 1 ? 's' : ''} au prix posé`} />
         <Indicateur libelle="Somme des boosts" valeur={ariary(r.sommeBoosts)} sous="Boosts des publications et leurs frais" />
         <Indicateur libelle="Vente actuelle" valeur={ariary(r.venteActuelle)} sous={`${nombre(r.quantiteVendue)} vendu${r.quantiteVendue > 1 ? 's' : ''}, ${nombre(r.stockRestant)} restant${r.stockRestant > 1 ? 's' : ''}`} />
-        <Indicateur libelle="Marge estimée" valeur={pourcentage(r.margeEstimeePct)} couleur={couleurMarge(r.margeEstimeePct)} sous="Sur l'achat avec frais" />
-        <Indicateur libelle="Marge réelle" valeur={pourcentage(r.margeReellePct)} couleur={couleurMarge(r.margeReellePct)} sous="Vente − boosts − achat" />
+        <Indicateur
+          libelle="Marge estimée"
+          valeur={ariary(margeEstimeeAr)}
+          couleur={couleurMarge(r.margeEstimeePct)}
+          sous={`${pourcentage(r.margeEstimeePct)} · Estimation − achat avec frais`}
+        />
+        <Indicateur
+          libelle="Marge réelle"
+          valeur={ariary(margeReelleAr)}
+          couleur={couleurMarge(r.margeReellePct)}
+          sous={`${pourcentage(r.margeReellePct)} · Vente − boosts − achat avec frais`}
+        />
       </div>
 
       <Carte titre="Détail">

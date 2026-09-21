@@ -992,3 +992,35 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+
+/* Accueil : « À surveiller » prend la hauteur de « Tâches du jour » et défile à l'intérieur */
+.accueil__grille {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+.accueil__surveiller {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.accueil__surveiller .carte__corps {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  max-height: 60vh;
+}
+@media (min-width: 768px) {
+  .accueil__grille {
+    grid-template-columns: 1fr 1fr;
+  }
+  /* Hauteur nulle + min-height 100 % : la carte suit la hauteur de la rangée sans l'agrandir */
+  .accueil__surveiller {
+    height: 0;
+    min-height: 100%;
+  }
+  .accueil__surveiller .carte__corps {
+    max-height: none;
+  }
+}
