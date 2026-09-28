@@ -2,6 +2,10 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../lib/prisma.js';
 import { ErreurHttp } from '../lib/erreurs.js';
 
+// Le secret de repli est public (dépôt) : interdit en production
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  throw new Error('JWT_SECRET doit être défini en production');
+}
 const SECRET = process.env.JWT_SECRET || 'change_moi';
 const DUREE = process.env.JWT_DUREE || '7d';
 

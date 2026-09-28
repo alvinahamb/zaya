@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'node:path';
 
+import { prisma } from './lib/prisma.js';
 import { serialiser } from './lib/serialiser.js';
 import { amorcerAdmin, amorcerSchema } from './lib/amorcer.js';
 import { authentifier } from './middleware/auth.js';
@@ -27,7 +28,9 @@ import { routeurApercu } from './routes/apercu.js';
 import { routeurObjectifs } from './routes/objectifs.js';
 
 const app = express();
-app.use(cors());
+// En production, seul le front déployé peut appeler l'API ; en local, tout est ouvert
+const FRONTEND_URL = process.env.FRONTEND_URL?.replace(/\/+$/, '');
+app.use(cors(FRONTEND_URL ? { origin: FRONTEND_URL } : undefined));
 app.use(express.json({ limit: '1mb' }));
 
 // Les Decimal Prisma partent en nombres, les Date en ISO
@@ -39,7 +42,11 @@ app.use((req, res, next) => {
 
 app.use('/uploads', express.static(path.resolve('uploads'), { maxAge: '7d' }));
 
-app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+// Touche aussi la base : un ping régulier garde l'API et Supabase éveillés
+app.get('/api/health', async (req, res) => {
+  const [{ now }] = await prisma.$queryRaw`select now()`;
+  res.json({ status: 'ok', base: now });
+});
 app.use('/api/auth', routeurAuth);
 
 // Tout le reste exige une session

@@ -19,7 +19,15 @@ export function ecrireToken(token) {
   }
 }
 
-export const api = axios.create({ baseURL: '/api' });
+// Vide en local (proxy Vite) ; URL de l'API déployée en production, sans slash final
+const RACINE_API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+
+export const api = axios.create({ baseURL: `${RACINE_API}/api` });
+
+/** Les images téléversées en local (`/uploads/…`) sont servies par l'API, pas par le front. */
+export function urlFichier(src) {
+  return src?.startsWith('/uploads/') ? `${RACINE_API}${src}` : src;
+}
 
 api.interceptors.request.use((config) => {
   const token = lireToken();

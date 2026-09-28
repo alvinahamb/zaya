@@ -1,0 +1,56 @@
+# Blueprint Render : API Node (plan free) + front statique.
+# Les secrets (sync: false) se saisissent dans le dashboard à la création.
+
+services:
+  - type: web
+    name: zaya-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    rootDir: backend
+    # --include=dev : le CLI Prisma est une devDependency, ignorée quand NODE_ENV=production
+    buildCommand: npm ci --include=dev && npx prisma generate
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: TZ
+        value: Indian/Antananarivo
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_MOT_DE_PASSE
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: produits
+      - key: FRONTEND_URL
+        sync: false
+
+  - type: web
+    name: zaya-front
+    runtime: static
+    branch: main
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      # React Router : toutes les routes renvoient vers l'application
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: VITE_API_URL
+        sync: false
