@@ -1,4 +1,5 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { Logo } from '../components/layout/Logo.jsx';
 
@@ -23,16 +24,17 @@ export function ChoixEspace() {
               key={e.cle}
               type="button"
               className="espace"
-              aria-label={`${e.nom} : ${e.description}`}
               // On transmet la page demandée au départ pour y revenir après la connexion
               onClick={() => naviguer(e.connexion, { state: location.state })}
             >
-              <Logo />
-              {/* Au survol : nom et description sur un voile flouté */}
-              <span className="espace__voile">
+              <span className="espace__visuel">
+                <Logo />
+              </span>
+              <span className="espace__corps">
                 <span className="espace__nom">{e.nom}</span>
                 <span className="espace__description">{e.description}</span>
               </span>
+              <ArrowRight className="espace__fleche" size={20} aria-hidden="true" />
             </button>
           ))}
         </div>

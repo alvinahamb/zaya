@@ -12,7 +12,7 @@ import { Bouton } from '../../components/ui/Bouton.jsx';
 import { BadgeStatutPublication } from '../../components/ui/Badge.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
-import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, BoutonsCsv, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsCsv, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
 import { dateCsv, codeCsv, idParNom, idsParNoms } from '../../lib/csv.js';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
@@ -20,17 +20,6 @@ import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
 import { CalendrierMois, CalendrierSemaine } from './Calendrier.jsx';
 
 const CLE_VUE = 'zaya.publications.vue';
-
-const COLONNES_EXPORT = [
-  { cle: 'dateHeurePublication', titre: 'Date', valeur: (p) => dateHeure(p.dateHeurePublication) },
-  { cle: 'nom', titre: 'Nom' },
-  { cle: 'statut', titre: 'Statut', valeur: (p) => LIBELLES_STATUT_PUBLICATION[p.statut] },
-  { cle: 'reseaux', titre: 'Réseaux', valeur: (p) => p.reseaux.map((r) => r.nom).join(', ') },
-  { cle: 'achat', titre: 'Commande', valeur: (p) => p.achat?.nom },
-  { cle: 'totalBoostsAr', titre: 'Boosts (Ar)', align: 'droite' },
-  { cle: 'lienPinterest', titre: 'Lien Pinterest' },
-  { cle: 'lienContenu', titre: 'Lien contenu' },
-];
 
 const COLONNES_CSV = [
   { cle: 'nom', titre: 'Nom' },
@@ -232,7 +221,7 @@ export function Publications() {
           <>
             <Selection value={statut} onChange={(e) => setStatut(e.target.value)} placeholder="Tous les statuts" options={FILTRES_STATUT} aria-label="Filtrer par statut" />
             <Selection value={reseau} onChange={(e) => setReseau(e.target.value)} placeholder="Tous les réseaux" options={(reseaux ?? []).map((r) => ({ valeur: String(r.id), libelle: r.nom }))} aria-label="Filtrer par réseau" />
-            <div className="pousser flex" style={{ gap: 4 }}>
+            <div className="pousser">
               <BoutonsCsv
                 nomFichier="publications"
                 colonnes={COLONNES_CSV}
@@ -249,7 +238,6 @@ export function Publications() {
                 })}
                 onImporte={recharger}
               />
-              <BoutonsExport nomFichier="publications" titre="Publications" colonnes={COLONNES_EXPORT} lignes={listeTriee} />
             </div>
           </>
         )}

@@ -11,19 +11,9 @@ import { Tableau } from '../../components/ui/Tableau.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Montant } from '../../components/ui/Montant.jsx';
 import { Saisie, Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, BoutonsExport, BoutonsCsv, Onglets } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, BoutonsCsv, Onglets } from '../../components/ui/Divers.jsx';
 import { BadgeStatutLivraison } from '../../components/ui/Badge.jsx';
 import { OngletLivraisons } from './OngletLivraisons.jsx';
-
-const COLONNES_EXPORT = [
-  { cle: 'dateVente', titre: 'Date', valeur: (v) => dateCourte(v.dateVente) },
-  { cle: 'nom', titre: 'Libellé', valeur: (v) => v.nom || `Vente n° ${v.id}` },
-  { cle: 'client', titre: 'Client', valeur: (v) => v.client?.nom ?? '' },
-  { cle: 'reseaux', titre: 'Réseaux', valeur: (v) => (v.reseaux ?? []).map((r) => r.nom).join(', ') },
-  { cle: 'nbArticles', titre: 'Articles', align: 'droite' },
-  { cle: 'reductionAr', titre: 'Réduction (Ar)', valeur: (v) => Number(v.reductionAr), texte: (v) => ariary(v.reductionAr), align: 'droite' },
-  { cle: 'sommeAr', titre: 'Total (Ar)', valeur: (v) => Number(v.sommeAr), texte: (v) => ariary(v.sommeAr), align: 'droite' },
-];
 
 const COLONNES_CSV = [
   { cle: 'id', titre: 'N° vente' },
@@ -117,13 +107,14 @@ export function ListeVentes() {
       {onglet === 'livraisons' ? <OngletLivraisons /> : (
       <>
       <div className="outils">
-        <Saisie type="date" value={du} onChange={(e) => setDu(e.target.value)} aria-label="Du" />
-        <span className="secondaire petit">au</span>
-        <Saisie type="date" value={au} onChange={(e) => setAu(e.target.value)} aria-label="Au" />
+        <div className="outils__dates">
+          <Saisie type="date" value={du} onChange={(e) => setDu(e.target.value)} aria-label="Du" />
+          <span className="secondaire petit">au</span>
+          <Saisie type="date" value={au} onChange={(e) => setAu(e.target.value)} aria-label="Au" />
+        </div>
         <Selection value={reseau} onChange={(e) => setReseau(e.target.value)} placeholder="Tous les réseaux" options={(reseaux ?? []).map((r) => ({ valeur: String(r.id), libelle: r.nom }))} aria-label="Filtrer par réseau" />
-        <div className="pousser flex" style={{ gap: 4 }}>
+        <div className="pousser">
           <BoutonsCsv nomFichier="ventes" colonnes={COLONNES_CSV} lignes={liste} />
-          <BoutonsExport nomFichier="ventes" titre="Ventes" sousTitre={`Du ${dateCourte(du)} au ${dateCourte(au)}`} colonnes={COLONNES_EXPORT} lignes={liste} />
         </div>
       </div>
 

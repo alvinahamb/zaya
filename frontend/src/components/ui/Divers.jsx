@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Inbox, Package, AlertCircle, Info, AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Download, FileDown, FileUp } from 'lucide-react';
+import { Inbox, Package, AlertCircle, Info, AlertTriangle, CheckCircle2, FileDown, FileUp } from 'lucide-react';
 import { useFermerDehors } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { urlFichier } from '../../services/api.js';
@@ -27,13 +27,14 @@ export function Onglets({ onglets, actif, onChange }) {
   );
 }
 
-export function Segment({ options, valeur, onChange, libelle }) {
+/** compact : sur mobile, seules les icônes des options restent visibles. */
+export function Segment({ options, valeur, onChange, libelle, compact = false }) {
   return (
-    <div className="segment" role="group" aria-label={libelle}>
+    <div className={`segment ${compact ? 'segment--compact' : ''}`} role="group" aria-label={libelle}>
       {options.map((o) => (
-        <button key={o.valeur} type="button" aria-pressed={valeur === o.valeur} onClick={() => onChange(o.valeur)}>
+        <button key={o.valeur} type="button" aria-pressed={valeur === o.valeur} onClick={() => onChange(o.valeur)} title={compact ? o.libelle : undefined}>
           {o.icone && <o.icone size={16} aria-hidden="true" />}
-          {o.libelle}
+          <span className="segment__libelle">{o.libelle}</span>
         </button>
       ))}
     </div>
@@ -117,40 +118,6 @@ export function ElementMenu({ icone: Icone, to, onClick, children, style }) {
     <button type="button" className="menu-deroulant__element" onClick={onClick} style={style}>
       {contenu}
     </button>
-  );
-}
-
-/** Exports Excel et PDF d'une liste, regroupés dans un seul menu. */
-export function BoutonsExport({ nomFichier, titre, sousTitre, colonnes, lignes }) {
-  const { notifier } = useToast();
-  const [enCours, setEnCours] = useState(false);
-  const vide = !lignes || lignes.length === 0;
-
-  const lancer = async (format) => {
-    setEnCours(true);
-    try {
-      // exceljs et jspdf pèsent lourd : chargés seulement au premier export
-      const { exporterExcel, exporterPdf } = await import('../../lib/export.js');
-      if (format === 'excel') await exporterExcel({ nomFichier, titre, colonnes, lignes });
-      else exporterPdf({ nomFichier, titre, sousTitre, colonnes, lignes });
-    } catch {
-      notifier("L'export a échoué", 'erreur');
-    } finally {
-      setEnCours(false);
-    }
-  };
-
-  return (
-    <MenuDeroulant
-      bouton={({ basculer, ouvert }) => (
-        <Bouton taille="petit" icone={Download} onClick={basculer} disabled={vide} chargement={enCours} aria-expanded={ouvert}>
-          Exporter
-        </Bouton>
-      )}
-    >
-      <ElementMenu icone={FileSpreadsheet} onClick={() => lancer('excel')}>Excel (.xlsx)</ElementMenu>
-      <ElementMenu icone={FileText} onClick={() => lancer('pdf')}>PDF</ElementMenu>
-    </MenuDeroulant>
   );
 }
 

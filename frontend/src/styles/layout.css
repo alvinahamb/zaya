@@ -382,8 +382,6 @@
     background: var(--surface);
   }
 }
-<<<<<<< Updated upstream
-=======
 
 /* Mobile : les menus de la barre du haut (alertes, nouveau, profil) s'alignent
    sur le bord droit de l'écran au lieu de leur bouton, pour ne pas sortir à gauche */
@@ -422,68 +420,69 @@
   text-align: center;
 }
 .espaces__grille {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 16px;
+  display: grid;
+  gap: 12px;
 }
 .espace {
-  position: relative;
-  width: 220px;
-  aspect-ratio: 1;
-  padding: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: 16px;
-  background: var(--marque-rouge);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 18px 14px 14px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-carte);
   box-shadow: var(--ombre);
+  color: var(--texte);
   font: inherit;
+  text-align: left;
   cursor: pointer;
-  transition: box-shadow var(--transition), transform var(--transition);
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
-.espace .logo__image {
+.espace:hover,
+.espace:focus-visible {
+  border-color: var(--principale);
+  box-shadow: var(--ombre-haute);
+  transform: translateY(-1px);
+  outline: none;
+}
+.espace__visuel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: var(--rayon-carte);
+  background: var(--marque-rouge);
+}
+.espace__visuel .logo__image {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.espace:hover,
-.espace:focus-visible {
-  box-shadow: var(--ombre-haute);
-  transform: translateY(-2px);
-  outline: none;
-}
-.espace:focus-visible {
-  box-shadow: 0 0 0 3px var(--peche), var(--ombre-haute);
-}
-/* Voile translucide et flou, révélé au survol */
-.espace__voile {
-  position: absolute;
-  inset: 0;
+.espace__corps {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 20px;
-  background: rgba(43, 35, 32, 0.35);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  color: #fff;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 200ms ease;
-}
-.espace:hover .espace__voile,
-.espace:focus-visible .espace__voile {
-  opacity: 1;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
 }
 .espace__nom {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 600;
 }
 .espace__description {
+  color: var(--texte-secondaire);
   font-size: 0.875rem;
-  line-height: 1.4;
-  opacity: 0.9;
 }
->>>>>>> Stashed changes
+.espace__fleche {
+  flex-shrink: 0;
+  color: var(--texte-discret);
+  transition: color var(--transition), transform var(--transition);
+}
+.espace:hover .espace__fleche {
+  color: var(--principale);
+  transform: translateX(2px);
+}
