@@ -60,6 +60,19 @@
   text-decoration: line-through;
   color: var(--texte-discret);
 }
+.tache-groupe {
+  padding: 8px 20px 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--texte-discret);
+  background: var(--fond-doux);
+  border-bottom: 1px solid var(--bordure);
+}
+.tache-groupe:first-child {
+  border-top: 0;
+}
 
 /* ----------------------------------------------------------------------
    Cartes de liste (mobile) : une carte par commande, vente ou article
@@ -1023,4 +1036,70 @@
   .accueil__surveiller .carte__corps {
     max-height: none;
   }
+}
+
+/* Objectifs du mois */
+.objectif .carte__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.objectif--abandonne {
+  opacity: 0.7;
+}
+.objectif__entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.objectif__titre {
+  margin: 0;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+.objectif__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.objectif__description {
+  margin: 0;
+  white-space: pre-line;
+}
+.objectif__progression {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.objectif__barre {
+  height: 10px;
+  border-radius: var(--rayon-pilule);
+  background: var(--peche-claire);
+  border: 1px solid var(--bordure);
+  overflow: hidden;
+}
+.objectif__barre > span {
+  display: block;
+  height: 100%;
+  background: var(--principale);
+  border-radius: var(--rayon-pilule);
+  transition: width 300ms ease;
+}
+.objectif__barre--atteint > span {
+  background: var(--succes);
+}
+.objectif__valeurs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.objectif__pied {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
 }

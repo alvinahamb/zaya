@@ -9,12 +9,13 @@ import { cleJour, debutSemaine } from '../../lib/calendrier.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
-import { Badge, BadgeStatutPublication } from '../../components/ui/Badge.jsx';
+import { BadgeStatutPublication } from '../../components/ui/Badge.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
+import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
 import { CalendrierMois, CalendrierSemaine } from './Calendrier.jsx';
 
 const CLE_VUE = 'zaya.publications.vue';
@@ -87,7 +88,7 @@ function CartePublication({ publication: p, onOuvrir, onModifier, onCorbeille, o
         <div className="carte-produit__nom">{p.nom}</div>
         <div className="tres-petit secondaire">{dateHeure(p.dateHeurePublication)}</div>
         <div className="flex" style={{ gap: 6, flexWrap: 'wrap' }}>
-          {p.reseaux.map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
+          <ReseauxPublication publication={p} />
           {p.achat && <Link to={`/achats/${p.achat.id}`} className="tres-petit" onClick={(e) => e.stopPropagation()}>{p.achat.nom}</Link>}
         </div>
         <div className="liens-pub">

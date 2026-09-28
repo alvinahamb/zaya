@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { Plus, Megaphone, ArrowRight } from 'lucide-react';
 import { ariary, dateHeure } from '../../lib/format.js';
 import { Carte } from '../../components/ui/Carte.jsx';
-import { Badge, BadgeStatutPublication } from '../../components/ui/Badge.jsx';
+import { BadgeStatutPublication } from '../../components/ui/Badge.jsx';
+import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
 import { BoutonLien } from '../../components/ui/Bouton.jsx';
 import { EtatVide } from '../../components/ui/Divers.jsx';
 
@@ -30,7 +31,7 @@ export function OngletPublications({ achat }) {
                 <div className="flex" style={{ flexWrap: 'wrap' }}>
                   <span className="element__titre">{p.nom}</span>
                   <BadgeStatutPublication statut={p.statut} />
-                  {p.reseaux.map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
+                  <ReseauxPublication publication={p} />
                 </div>
                 <div className="element__meta">
                   {dateHeure(p.dateHeurePublication)}

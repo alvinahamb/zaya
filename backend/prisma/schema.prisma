@@ -4,7 +4,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -154,6 +156,30 @@ model Utilisateur {
   role         String   @default("admin") @db.VarChar(20)
   actif        Boolean  @default(true)
   dateCreation DateTime @default(now()) @db.Timestamp(6)
+  MonthlyAchievement MonthlyAchievement[]
+}
+
+/// Objectifs du mois (table `monthly_achievements`, créée par backend/prisma/sql/2026-09-22_monthly_achievements.sql).
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model MonthlyAchievement {
+  id           Int         @id @default(autoincrement())
+  userId       Int         @map("user_id")
+  title        String      @db.VarChar(150)
+  description  String?
+  category     String?     @db.VarChar(50)
+  targetValue  Decimal     @map("target_value") @db.Decimal(14, 2)
+  currentValue Decimal     @default(0) @map("current_value") @db.Decimal(14, 2)
+  unit         String?     @db.VarChar(30)
+  startDate    DateTime    @map("start_date") @db.Date
+  endDate      DateTime    @map("end_date") @db.Date
+  status       String      @default("en_cours") @db.VarChar(20)
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
+  completedAt  DateTime?   @map("completed_at") @db.Timestamp(6)
+  Utilisateur  Utilisateur @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_monthly_achievements_user")
+
+  @@index([userId], map: "idx_monthly_achievements_user")
+  @@index([endDate], map: "idx_monthly_achievements_end_date")
+  @@map("monthly_achievements")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -188,8 +214,10 @@ model Budget {
 }
 
 model PublicationReseau {
-  idPublication Int
-  idReseau      Int
+  idPublication        Int
+  idReseau             Int
+  /// Heure propre au réseau ; null = suit Publication.dateHeurePublication
+  dateHeurePublication DateTime?   @db.Timestamp(6)
   Publication   Publication @relation(fields: [idPublication], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkPublicationReseauPublication")
   Reseau        Reseau      @relation(fields: [idReseau], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkPublicationReseauReseau")
 

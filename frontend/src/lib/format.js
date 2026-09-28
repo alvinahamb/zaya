@@ -139,6 +139,28 @@ export const LIBELLES_STATUT_LIVRAISON = {
   annulee: 'Annulée',
 };
 
+export const LIBELLES_STATUT_OBJECTIF = {
+  en_cours: 'En cours',
+  atteint: 'Atteint',
+  abandonne: 'Abandonné',
+};
+
+export const CATEGORIES_OBJECTIF = {
+  ventes: 'Ventes',
+  chiffre_affaires: "Chiffre d'affaires",
+  clients: 'Clients',
+  publications: 'Publications',
+  stock: 'Stock',
+  autre: 'Autre',
+};
+
+/** Position d'une tâche par rapport au jour courant (champ `quand` de l'accueil). */
+export const LIBELLES_QUAND = {
+  retard: 'En retard',
+  jour: "Aujourd'hui",
+  demain: 'Demain',
+};
+
 /** Étape suivante d'une livraison, avec le libellé du bouton. */
 export const SUIVANT_LIVRAISON = {
   a_programmer: { statut: 'programmee', libelle: 'Livreur appelé' },

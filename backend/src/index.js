@@ -4,7 +4,7 @@ import cors from 'cors';
 import path from 'node:path';
 
 import { serialiser } from './lib/serialiser.js';
-import { amorcerAdmin } from './lib/amorcer.js';
+import { amorcerAdmin, amorcerSchema } from './lib/amorcer.js';
 import { authentifier } from './middleware/auth.js';
 import { gererErreurs } from './middleware/erreurs.js';
 
@@ -24,6 +24,7 @@ import { routeurStats } from './routes/stats.js';
 import { routeurAccueil } from './routes/accueil.js';
 import { routeurRecherche } from './routes/recherche.js';
 import { routeurApercu } from './routes/apercu.js';
+import { routeurObjectifs } from './routes/objectifs.js';
 
 const app = express();
 app.use(cors());
@@ -59,10 +60,12 @@ app.use('/api/clients', routeurClients);
 app.use('/api/livraisons', routeurLivraisons);
 app.use('/api/publications', routeurPublications);
 app.use('/api/stats', routeurStats);
+app.use('/api/objectifs', routeurObjectifs);
 
 app.use('/api', (req, res) => res.status(404).json({ message: 'Route inconnue' }));
 app.use(gererErreurs);
 
+await amorcerSchema();
 await amorcerAdmin();
 
 const PORT = process.env.PORT || 4000;

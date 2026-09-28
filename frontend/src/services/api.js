@@ -128,6 +128,13 @@ export const Publications = {
   restaurer: (id) => donnees(api.patch(`/publications/${id}/statut`, { statut: 'a_faire' })),
 };
 
+export const Objectifs = {
+  ...crud('/objectifs'),
+  // { currentValue } ou { delta }
+  progresser: (id, corps) => donnees(api.patch(`/objectifs/${id}/progression`, corps)),
+  changerStatut: (id, status) => donnees(api.patch(`/objectifs/${id}/statut`, { status })),
+};
+
 export const Stats = { lire: (params) => donnees(api.get('/stats', { params })) };
 export const Accueil = { lire: () => donnees(api.get('/accueil')) };
 export const Recherche = { chercher: (q) => donnees(api.get('/recherche', { params: { q } })) };

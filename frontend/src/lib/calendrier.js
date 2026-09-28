@@ -29,13 +29,32 @@ export function joursDuMois(annee, mois) {
   return jours;
 }
 
+/**
+ * Regroupe les publications par jour. Chaque réseau pouvant avoir sa propre
+ * heure, une publication apparaît à chaque jour concerné avec, pour ce jour,
+ * `heureOccurrence` (première heure du jour) et `reseauxDuJour`.
+ */
 export function regrouperParJour(publications) {
   const parJour = new Map();
   for (const p of publications) {
-    if (!p.dateHeurePublication) continue;
-    const cle = cleJour(new Date(p.dateHeurePublication));
-    if (!parJour.has(cle)) parJour.set(cle, []);
-    parJour.get(cle).push(p);
+    const occurrences = new Map(); // cléJour → { heure, reseaux }
+    for (const r of p.reseaux ?? []) {
+      const d = r.dateHeurePublication ?? p.dateHeurePublication;
+      if (!d) continue;
+      const cle = cleJour(new Date(d));
+      if (!occurrences.has(cle)) occurrences.set(cle, { heure: d, reseaux: [] });
+      const o = occurrences.get(cle);
+      o.reseaux.push(r);
+      if (new Date(d) < new Date(o.heure)) o.heure = d;
+    }
+    if (occurrences.size === 0 && p.dateHeurePublication) {
+      occurrences.set(cleJour(new Date(p.dateHeurePublication)), { heure: p.dateHeurePublication, reseaux: p.reseaux ?? [] });
+    }
+    for (const [cle, o] of occurrences) {
+      if (!parJour.has(cle)) parJour.set(cle, []);
+      parJour.get(cle).push({ ...p, cleOccurrence: `${p.id}-${cle}`, heureOccurrence: o.heure, reseauxDuJour: o.reseaux });
+    }
   }
+  for (const liste of parJour.values()) liste.sort((a, b) => new Date(a.heureOccurrence) - new Date(b.heureOccurrence));
   return parJour;
 }

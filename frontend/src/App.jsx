@@ -15,6 +15,7 @@ import { FicheVente } from './pages/ventes/FicheVente.jsx';
 import { Publications } from './pages/publications/Publications.jsx';
 import { FichePublication } from './pages/publications/FichePublication.jsx';
 import { Statistiques } from './pages/Statistiques.jsx';
+import { Objectifs } from './pages/objectifs/Objectifs.jsx';
 import { Parametres } from './pages/parametres/Parametres.jsx';
 
 function Coquille() {
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="publications" element={<Publications />} />
         <Route path="publications/:id" element={<FichePublication />} />
         <Route path="statistiques" element={<Statistiques />} />
+        <Route path="objectifs" element={<Objectifs />} />
         <Route path="parametres" element={<Parametres />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

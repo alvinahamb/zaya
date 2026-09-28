@@ -18,7 +18,7 @@ function PubMini({ publication, onOuvrir }) {
       title={publication.nom}
     >
       <Icone aria-hidden="true" />
-      {heure(publication.dateHeurePublication)} {publication.nom}
+      {heure(publication.heureOccurrence ?? publication.dateHeurePublication)} {publication.nom}
     </button>
   );
 }
@@ -48,7 +48,7 @@ export function CalendrierMois({ annee, mois, publications, onJour, onOuvrir }) 
           >
             <span className="calendrier__numero">{d.getDate()}</span>
             <div className="calendrier__publications">
-              {liste.slice(0, MAX).map((p) => <PubMini key={p.id} publication={p} onOuvrir={onOuvrir} />)}
+              {liste.slice(0, MAX).map((p) => <PubMini key={p.cleOccurrence ?? p.id} publication={p} onOuvrir={onOuvrir} />)}
               {liste.length > MAX && <span className="calendrier__plus">+{liste.length - MAX}</span>}
             </div>
           </div>
@@ -82,13 +82,17 @@ export function CalendrierSemaine({ depart, publications, onJour, onOuvrir }) {
               {liste.map((p) => {
                 const Icone = ICONES_STATUT[p.statut] ?? Circle;
                 return (
-                  <button key={p.id} type="button" className="pub-carte" onClick={() => onOuvrir(p)}>
+                  <button key={p.cleOccurrence ?? p.id} type="button" className="pub-carte" onClick={() => onOuvrir(p)}>
                     <span className={`pub-mini pub-mini--${p.statut}`} style={{ width: 'auto', alignSelf: 'flex-start' }}>
                       <Icone aria-hidden="true" />
-                      {heure(p.dateHeurePublication)}
+                      {heure(p.heureOccurrence ?? p.dateHeurePublication)}
                     </span>
                     <span className="pub-carte__nom">{p.nom}</span>
-                    {p.reseaux?.length > 0 && <span className="pub-carte__heure">{p.reseaux.map((r) => r.nom).join(', ')}</span>}
+                    {(p.reseauxDuJour ?? p.reseaux)?.length > 0 && (
+                      <span className="pub-carte__heure">
+                        {(p.reseauxDuJour ?? p.reseaux).map((r) => (r.dateHeurePropre ? `${r.nom} ${heure(r.dateHeurePropre)}` : r.nom)).join(', ')}
+                      </span>
+                    )}
                   </button>
                 );
               })}

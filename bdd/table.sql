@@ -20,6 +20,7 @@ BEGIN;
 -- ---------------------------------------------------------------------
 --  Nettoyage (permet de relancer le script)
 -- ---------------------------------------------------------------------
+DROP TABLE IF EXISTS monthly_achievements CASCADE;
 DROP TABLE IF EXISTS "Livraison"    CASCADE;
 DROP TABLE IF EXISTS "Budget"       CASCADE;
 DROP TABLE IF EXISTS "Frais"        CASCADE;
@@ -242,6 +243,7 @@ CREATE TABLE "Publication" (
 CREATE TABLE "PublicationReseau" (
     "idPublication" INT NOT NULL,
     "idReseau"      INT NOT NULL,
+    "dateHeurePublication" TIMESTAMP,   -- heure propre au réseau ; NULL = date de la publication
 
     CONSTRAINT "pkPublicationReseau" PRIMARY KEY ("idPublication", "idReseau"),
     CONSTRAINT "fkPublicationReseauPublication"
@@ -312,8 +314,38 @@ CREATE TABLE "Budget" (
 
 
 -- =====================================================================
+--  7 bis. Objectifs du mois (voir backend/prisma/sql/2026-09-22_monthly_achievements.sql)
+--  Nommage snake_case imposé par la spécification de la fonctionnalité.
+-- =====================================================================
+
+CREATE TABLE monthly_achievements (
+    id             SERIAL        PRIMARY KEY,
+    user_id        INT           NOT NULL,
+    title          VARCHAR(150)  NOT NULL,
+    description    TEXT,
+    category       VARCHAR(50),
+    target_value   NUMERIC(14,2) NOT NULL CHECK (target_value >= 0),
+    current_value  NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (current_value >= 0),
+    unit           VARCHAR(30),
+    start_date     DATE          NOT NULL,
+    end_date       DATE          NOT NULL,
+    status         VARCHAR(20)   NOT NULL DEFAULT 'en_cours'
+        CHECK (status IN ('en_cours', 'atteint', 'abandonne')),
+    created_at     TIMESTAMP     NOT NULL DEFAULT NOW(),
+    completed_at   TIMESTAMP,
+
+    CONSTRAINT fk_monthly_achievements_user
+        FOREIGN KEY (user_id) REFERENCES "Utilisateur" ("id") ON DELETE CASCADE,
+    CONSTRAINT ck_monthly_achievements_dates CHECK (end_date >= start_date)
+);
+
+
+-- =====================================================================
 --  8. Index (PostgreSQL n'indexe pas automatiquement les clés étrangères)
 -- =====================================================================
+
+CREATE INDEX idx_monthly_achievements_user     ON monthly_achievements (user_id);
+CREATE INDEX idx_monthly_achievements_end_date ON monthly_achievements (end_date);
 
 CREATE INDEX "idxProduitCategorie"        ON "Produit"     ("idCategorie");
 CREATE INDEX "idxDetailAchatProduit"      ON "DetailAchat" ("idProduit");

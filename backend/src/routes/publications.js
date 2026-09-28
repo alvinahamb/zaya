@@ -25,7 +25,12 @@ export function enrichirPublication(p) {
   return {
     ...reste,
     achat: Achat ?? null,
-    reseaux: (PublicationReseau ?? []).map((x) => x.Reseau),
+    // Chaque réseau expose sa date effective (la sienne, sinon celle de la publication) et sa date propre
+    reseaux: (PublicationReseau ?? []).map((x) => ({
+      ...x.Reseau,
+      dateHeurePublication: x.dateHeurePublication ?? reste.dateHeurePublication ?? null,
+      dateHeurePropre: x.dateHeurePublication ?? null,
+    })),
     idReseaux: (PublicationReseau ?? []).map((x) => x.idReseau),
     boosts,
     totalBoostsAr: boosts.reduce((s, b) => s + b.totalAr, 0),
@@ -38,27 +43,46 @@ function lireStatut(valeur) {
   return statut;
 }
 
-function lireReseaux(valeur) {
-  if (valeur === undefined) return undefined;
-  exiger(Array.isArray(valeur), 'Réseaux invalides');
-  return [...new Set(valeur.map((id) => entierId(id, 'Réseau')))];
+/**
+ * Réseaux de la publication : `reseaux: [{ idReseau, dateHeurePublication? }]`
+ * (chaque réseau peut avoir sa propre heure), ou l'ancien `idReseaux: [id]`.
+ */
+function lireReseaux(corps) {
+  if (Array.isArray(corps.reseaux)) {
+    const parId = new Map();
+    for (const r of corps.reseaux) {
+      const idReseau = entierId(r?.idReseau ?? r, 'Réseau');
+      parId.set(idReseau, { idReseau, dateHeurePublication: date(r?.dateHeurePublication, 'Date de publication du réseau') });
+    }
+    return [...parId.values()];
+  }
+  if (corps.idReseaux === undefined) return [];
+  exiger(Array.isArray(corps.idReseaux), 'Réseaux invalides');
+  return [...new Set(corps.idReseaux.map((id) => entierId(id, 'Réseau')))].map((idReseau) => ({ idReseau, dateHeurePublication: null }));
 }
 
 function lireCorps(corps = {}) {
   const nom = String(corps.nom ?? '').trim();
   exiger(nom, 'Le nom est obligatoire');
   const texte = (v) => (v ? String(v).trim() : null);
+  const reseaux = lireReseaux(corps);
+  // Sans date principale, la première heure des réseaux fait foi
+  let dateHeurePublication = date(corps.dateHeurePublication, 'Date de publication');
+  if (!dateHeurePublication) {
+    const dates = reseaux.map((r) => r.dateHeurePublication).filter(Boolean);
+    if (dates.length) dateHeurePublication = new Date(Math.min(...dates.map((d) => d.getTime())));
+  }
   return {
     donnees: {
       nom,
       description: texte(corps.description),
       statut: lireStatut(corps.statut),
-      dateHeurePublication: date(corps.dateHeurePublication, 'Date de publication'),
+      dateHeurePublication,
       lienPinterest: texte(corps.lienPinterest),
       lienContenu: texte(corps.lienContenu),
       idAchat: corps.idAchat ? entierId(corps.idAchat, 'Commande') : null,
     },
-    idReseaux: lireReseaux(corps.idReseaux) ?? [],
+    reseaux,
   };
 }
 
@@ -72,9 +96,11 @@ routeurPublications.get('/', async (req, res) => {
   const { du, au, statut, reseau, achat } = req.query;
   const where = {};
   if (du || au) {
-    where.dateHeurePublication = {};
-    if (du) where.dateHeurePublication.gte = date(du, 'Date de début');
-    if (au) where.dateHeurePublication.lte = date(au, 'Date de fin');
+    const plage = {};
+    if (du) plage.gte = date(du, 'Date de début');
+    if (au) plage.lte = date(au, 'Date de fin');
+    // La publication ou l'un de ses réseaux tombe dans la plage
+    where.OR = [{ dateHeurePublication: plage }, { PublicationReseau: { some: { dateHeurePublication: plage } } }];
   }
   // Sans filtre explicite, la corbeille est exclue
   where.statut = statut ? lireStatut(String(statut)) : { not: 'supprimee' };
@@ -93,21 +119,21 @@ routeurPublications.get('/:id', async (req, res) => {
 });
 
 routeurPublications.post('/', async (req, res) => {
-  const { donnees, idReseaux } = lireCorps(req.body);
+  const { donnees, reseaux } = lireCorps(req.body);
   const cree = await prisma.publication.create({
-    data: { ...donnees, PublicationReseau: { create: idReseaux.map((idReseau) => ({ idReseau })) } },
+    data: { ...donnees, PublicationReseau: { create: reseaux } },
   });
   res.status(201).json(await charger(cree.id));
 });
 
 routeurPublications.put('/:id', async (req, res) => {
   const id = entierId(req.params.id);
-  const { donnees, idReseaux } = lireCorps(req.body);
+  const { donnees, reseaux } = lireCorps(req.body);
   await prisma.publication.update({
     where: { id },
     data: {
       ...donnees,
-      PublicationReseau: { deleteMany: {}, create: idReseaux.map((idReseau) => ({ idReseau })) },
+      PublicationReseau: { deleteMany: {}, create: reseaux },
     },
   });
   res.json(await charger(id));
