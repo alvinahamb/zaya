@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, ShoppingBag } from 'lucide-react';
 import { Achats } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
-import { dateCourte, versInputDate, euro, ariary, pourcentage, LIBELLES_STATUT_ACHAT } from '../../lib/format.js';
+import { dateCourte, versInputDate, euro, ariary, LIBELLES_STATUT_ACHAT } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
@@ -12,21 +12,9 @@ import { BadgeStatutAchat, BadgeFigement } from '../../components/ui/Badge.jsx';
 import { Montant, Marge } from '../../components/ui/Montant.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
-import { Chargement, Encart, EtatVide, BoutonsExport, BoutonsCsv } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, BoutonsCsv } from '../../components/ui/Divers.jsx';
 import { nombreCsv, dateCsv } from '../../lib/csv.js';
 import { FormulaireAchat } from './FormulaireAchat.jsx';
-
-const COLONNES_EXPORT = [
-  { cle: 'nom', titre: 'Nom' },
-  { cle: 'dateCommande', titre: 'Commandée le', valeur: (a) => dateCourte(a.dateCommande) },
-  { cle: 'dateArriveeEstimee', titre: 'Arrivée estimée', valeur: (a) => dateCourte(a.dateArriveeEstimee) },
-  { cle: 'dateArrivee', titre: 'Arrivée réelle', valeur: (a) => dateCourte(a.dateArrivee) },
-  { cle: 'statut', titre: 'Statut', valeur: (a) => LIBELLES_STATUT_ACHAT[a.statut] },
-  { cle: 'nbProduits', titre: 'Produits' },
-  { cle: 'somme', titre: 'Total (€)', valeur: (a) => Number(a.sommeEffective), texte: (a) => euro(a.sommeEffective), align: 'droite' },
-  { cle: 'sommeAr', titre: 'Payé (Ar)', valeur: (a) => Number(a.sommeAr), texte: (a) => ariary(a.sommeAr), align: 'droite' },
-  { cle: 'margeEstimee', titre: 'Marge estimée', valeur: (a) => a.recap.margeEstimeePct, texte: (a) => pourcentage(a.recap.margeEstimeePct), align: 'droite' },
-];
 
 // Import : crée l'en-tête de la commande ; les produits se tarifent ensuite dans la fiche
 const COLONNES_CSV = [
@@ -163,9 +151,8 @@ export function ListeAchats() {
           options={Object.entries(LIBELLES_STATUT_ACHAT).map(([valeur, libelle]) => ({ valeur, libelle }))}
           aria-label="Filtrer par statut"
         />
-        <div className="pousser flex" style={{ gap: 4 }}>
+        <div className="pousser">
           <BoutonsCsv nomFichier="achats" colonnes={COLONNES_CSV} lignes={filtres} importer={importerAchat} onImporte={recharger} />
-          <BoutonsExport nomFichier="achats" titre="Achats" colonnes={COLONNES_EXPORT} lignes={filtres} />
         </div>
       </div>
 

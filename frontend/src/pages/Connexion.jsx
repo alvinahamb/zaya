@@ -1,5 +1,5 @@
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { LogIn } from 'lucide-react';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { LogIn, ChevronLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useFormulaire } from '../lib/hooks.js';
 import { Champ, Saisie } from '../components/ui/Champs.jsx';
@@ -28,6 +28,10 @@ export function Connexion() {
   return (
     <div className="connexion">
       <div className="carte connexion__carte">
+        <Link className="page__retour" to="/espaces" state={location.state}>
+          <ChevronLeft size={16} aria-hidden="true" />
+          Espaces
+        </Link>
         <div className="connexion__logo">
           <Logo />
           <h1 className="sr-only">Zaya</h1>

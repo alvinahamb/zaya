@@ -9,7 +9,7 @@ import { Carte, Indicateur } from '../components/ui/Carte.jsx';
 import { Tableau } from '../components/ui/Tableau.jsx';
 import { Montant, Marge } from '../components/ui/Montant.jsx';
 import { Saisie } from '../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, BoutonsCsv } from '../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsCsv } from '../components/ui/Divers.jsx';
 
 /* Mêmes valeurs que les tokens CSS --graphique-* (Recharts a besoin de couleurs résolues). */
 const COULEURS = ['#951010', '#d4a017', '#e9c77a', '#4f7c82', '#3b6ea5', '#c0392b'];
@@ -84,7 +84,7 @@ const COLONNES = [
 ];
 
 /** Une seule carte pour les trois répartitions : on change de dimension par onglet. */
-function Repartition({ donnees, sousTitre }) {
+function Repartition({ donnees }) {
   const [dimension, setDimension] = useState('parProduit');
   const d = DIMENSIONS.find((x) => x.cle === dimension);
   const liste = donnees[dimension] ?? [];
@@ -93,10 +93,7 @@ function Repartition({ donnees, sousTitre }) {
     <Carte nu>
       <div className="carte__entete" style={{ paddingBottom: 0, borderBottom: 0 }}>
         <Onglets onglets={DIMENSIONS} actif={dimension} onChange={setDimension} />
-        <span className="flex" style={{ gap: 4 }}>
-          <BoutonsCsv nomFichier={`stats-${d.libelle.toLowerCase()}`} colonnes={COLONNES_EXPORT} lignes={liste} />
-          <BoutonsExport nomFichier={`stats-${d.libelle.toLowerCase()}`} titre={d.titre} sousTitre={sousTitre} colonnes={COLONNES_EXPORT} lignes={liste} />
-        </span>
+        <BoutonsCsv nomFichier={`stats-${d.libelle.toLowerCase()}`} colonnes={COLONNES_EXPORT} lignes={liste} />
       </div>
       {liste.length === 0 ? (
         <EtatVide icone={BarChart3} titre="Aucune vente sur la période" />
@@ -146,11 +143,11 @@ export function Statistiques() {
       <div className="outils">
         <Segment libelle="Période" valeur={preset} onChange={setPreset} options={PRESETS} />
         {preset === 'perso' && (
-          <>
+          <div className="outils__dates">
             <Saisie type="date" value={perso.du} onChange={(e) => setPerso((p) => ({ ...p, du: e.target.value }))} aria-label="Du" />
             <span className="secondaire petit">au</span>
             <Saisie type="date" value={perso.au} onChange={(e) => setPerso((p) => ({ ...p, au: e.target.value }))} aria-label="Au" />
-          </>
+          </div>
         )}
       </div>
 
@@ -192,7 +189,7 @@ export function Statistiques() {
               )}
             </Carte>
 
-            <Repartition donnees={donnees} sousTitre={sousTitre} />
+            <Repartition donnees={donnees} />
           </div>
         )
       )}
