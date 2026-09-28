@@ -846,3 +846,37 @@
   align-items: center;
   gap: 2px;
 }
+
+/* Période « du … au … » : les deux dates restent côte à côte */
+.outils__dates {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 767px) {
+  /* Filtres sur une ligne : les listes se partagent la place, les icônes gardent la leur */
+  .outils .selection {
+    flex: 1 1 110px;
+    min-width: 0;
+  }
+  .outils > .pousser {
+    flex-shrink: 0;
+  }
+  .outils__dates {
+    flex: 1 1 100%;
+  }
+  .outils .outils__dates .saisie {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+  .segment--compact .segment__libelle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}

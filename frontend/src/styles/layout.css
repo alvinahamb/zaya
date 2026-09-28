@@ -382,3 +382,107 @@
     background: var(--surface);
   }
 }
+
+/* Mobile : les menus de la barre du haut (alertes, nouveau, profil) s'alignent
+   sur le bord droit de l'écran au lieu de leur bouton, pour ne pas sortir à gauche */
+@media (max-width: 767px) {
+  .barre-haut__actions {
+    position: relative;
+  }
+  .barre-haut__actions .menu-deroulant {
+    position: static;
+  }
+  .barre-haut__actions .menu-deroulant__panneau {
+    right: 0;
+    max-width: calc(100vw - 2 * var(--gouttiere));
+  }
+  .barre-haut__actions .notifications {
+    width: calc(100vw - 2 * var(--gouttiere) - 14px);
+  }
+}
+
+/* Choix de l'espace (avant la connexion) */
+.espaces {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px var(--gouttiere);
+  background: var(--fond-doux);
+}
+.espaces__contenu {
+  width: 100%;
+  max-width: 520px;
+}
+.espaces__titre {
+  margin: 0 0 20px;
+  font-size: 1.35rem;
+  text-align: center;
+}
+.espaces__grille {
+  display: grid;
+  gap: 12px;
+}
+.espace {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 18px 14px 14px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-carte);
+  box-shadow: var(--ombre);
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.espace:hover,
+.espace:focus-visible {
+  border-color: var(--principale);
+  box-shadow: var(--ombre-haute);
+  transform: translateY(-1px);
+  outline: none;
+}
+.espace__visuel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: var(--rayon-carte);
+  background: var(--marque-rouge);
+}
+.espace__visuel .logo__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.espace__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.espace__nom {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.espace__description {
+  color: var(--texte-secondaire);
+  font-size: 0.875rem;
+}
+.espace__fleche {
+  flex-shrink: 0;
+  color: var(--texte-discret);
+  transition: color var(--transition), transform var(--transition);
+}
+.espace:hover .espace__fleche {
+  color: var(--principale);
+  transform: translateX(2px);
+}

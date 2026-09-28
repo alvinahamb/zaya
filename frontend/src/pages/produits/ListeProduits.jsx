@@ -13,19 +13,9 @@ import { BadgeStock } from '../../components/ui/Badge.jsx';
 import { Montant } from '../../components/ui/Montant.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
-import { Chargement, Encart, EtatVide, Segment, ImageProduit, BoutonsExport, BoutonsCsv } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, Segment, ImageProduit, BoutonsCsv } from '../../components/ui/Divers.jsx';
 import { nombreCsv, idParNom } from '../../lib/csv.js';
 import { FormulaireProduit } from './FormulaireProduit.jsx';
-
-const COLONNES_EXPORT = [
-  { cle: 'nom', titre: 'Nom' },
-  { cle: 'categorie', titre: 'Catégorie', valeur: (p) => p.categorie?.nom },
-  { cle: 'materiel', titre: 'Matériel' },
-  { cle: 'codeShein', titre: 'Code Shein' },
-  { cle: 'prix', titre: "Prix d'achat (€)", valeur: (p) => (p.prix === null ? null : Number(p.prix)), texte: (p) => euro(p.prix), align: 'droite' },
-  { cle: 'prixVenteAr', titre: 'Prix de vente (Ar)', valeur: (p) => (p.prixVenteAr === null ? null : Number(p.prixVenteAr)), texte: (p) => ariary(p.prixVenteAr), align: 'droite' },
-  { cle: 'stockRestant', titre: 'Stock restant', align: 'droite' },
-];
 
 const COLONNES_CSV = [
   { cle: 'nom', titre: 'Nom' },
@@ -142,8 +132,8 @@ export function ListeProduits() {
       <div className="outils">
         {!mobile && <RechercheListe valeur={recherche} onChange={setRecherche} placeholder="Nom ou code Shein" libelle="Rechercher un produit" />}
         <Selection value={categorie} onChange={(e) => setCategorie(e.target.value)} placeholder="Toutes les catégories" options={(categories ?? []).map((c) => ({ valeur: String(c.id), libelle: c.nom }))} aria-label="Filtrer par catégorie" />
-        <Segment libelle="Affichage" valeur={vue} onChange={changerVue} options={[{ valeur: 'grille', libelle: 'Grille', icone: LayoutGrid }, { valeur: 'tableau', libelle: 'Tableau', icone: List }]} />
-        <div className="pousser flex" style={{ gap: 4 }}>
+        <Segment compact libelle="Affichage" valeur={vue} onChange={changerVue} options={[{ valeur: 'grille', libelle: 'Grille', icone: LayoutGrid }, { valeur: 'tableau', libelle: 'Tableau', icone: List }]} />
+        <div className="pousser">
           <BoutonsCsv
             nomFichier="produits"
             colonnes={COLONNES_CSV}
@@ -156,7 +146,6 @@ export function ListeProduits() {
             })}
             onImporte={recharger}
           />
-          <BoutonsExport nomFichier="produits" titre="Produits" colonnes={COLONNES_EXPORT} lignes={filtres} />
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { BarreHaut } from './components/layout/BarreHaut.jsx';
 import { Chargement } from './components/ui/Divers.jsx';
 
 import { Connexion } from './pages/Connexion.jsx';
+import { ChoixEspace } from './pages/ChoixEspace.jsx';
 import { Accueil } from './pages/Accueil.jsx';
 import { ListeAchats } from './pages/achats/ListeAchats.jsx';
 import { FicheAchat } from './pages/achats/FicheAchat.jsx';
@@ -23,7 +24,7 @@ function Coquille() {
   const location = useLocation();
 
   if (!pret) return <Chargement texte="Ouverture de la session…" />;
-  if (!utilisateur) return <Navigate to="/connexion" replace state={{ depuis: location.pathname }} />;
+  if (!utilisateur) return <Navigate to="/espaces" replace state={{ depuis: location.pathname }} />;
 
   return (
     <>
@@ -38,6 +39,7 @@ function Coquille() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/espaces" element={<ChoixEspace />} />
       <Route path="/connexion" element={<Connexion />} />
       <Route element={<Coquille />}>
         <Route index element={<Accueil />} />
