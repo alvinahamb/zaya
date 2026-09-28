@@ -55,13 +55,17 @@ function enrichirAchat(achat, { complet = true } = {}) {
     fige: Boolean(achat.dateFigement),
     statut: statutAchat(achat, aujourdhui()),
     nbProduits: DetailAchat.length,
-    // Détail léger des lignes (export CSV de la liste des commandes)
+    // Contenu de la commande pour l'export CSV de la liste : articles tarifés, frais et budgets
     articles: DetailAchat.map((l) => ({
       produit: l.Produit.nom,
       codeShein: l.Produit.codeShein,
       quantite: l.quantite,
       prix: l.prix,
+      prixVenteAr: l.prixVenteAr,
+      margePct: l.margePct,
     })),
+    frais: Frais ?? [],
+    budgets: Budget ?? [],
     nbPublications: publications.length,
     sommeEffective,
     taux,
