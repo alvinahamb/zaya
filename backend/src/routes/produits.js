@@ -2,6 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { createClient } from '@supabase/supabase-js';
 import { prisma } from '../lib/prisma.js';
 import { ErreurHttp, exiger, entierId, nombre } from '../lib/erreurs.js';
 import { stockRestant } from '../lib/calculs.js';
@@ -10,14 +11,28 @@ export const routeurProduits = Router();
 
 const DOSSIER_IMAGES = path.resolve('uploads');
 
+// Avec Supabase configuré, les images partent dans Storage (le disque de
+// l'hébergeur est éphémère) ; sinon, dossier local servi sous /uploads.
+const BUCKET = process.env.SUPABASE_BUCKET || 'produits';
+const supabase =
+  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false },
+      })
+    : null;
+
+function nomFichier(fichier) {
+  const ext = path.extname(fichier.originalname).toLowerCase() || '.jpg';
+  return `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`;
+}
+
 const televersement = multer({
-  storage: multer.diskStorage({
-    destination: DOSSIER_IMAGES,
-    filename: (req, fichier, cb) => {
-      const ext = path.extname(fichier.originalname).toLowerCase() || '.jpg';
-      cb(null, `${Date.now()}-${crypto.randomBytes(4).toString('hex')}${ext}`);
-    },
-  }),
+  storage: supabase
+    ? multer.memoryStorage()
+    : multer.diskStorage({
+        destination: DOSSIER_IMAGES,
+        filename: (req, fichier, cb) => cb(null, nomFichier(fichier)),
+      }),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, fichier, cb) => {
     if (fichier.mimetype.startsWith('image/')) cb(null, true);
@@ -93,9 +108,17 @@ routeurProduits.get('/', async (req, res) => {
   res.json(produits.map(enrichirProduit));
 });
 
-routeurProduits.post('/image', televersement.single('image'), (req, res) => {
+routeurProduits.post('/image', televersement.single('image'), async (req, res) => {
   exiger(req.file, 'Aucune image reçue');
-  res.status(201).json({ url: `/uploads/${req.file.filename}` });
+  if (!supabase) return res.status(201).json({ url: `/uploads/${req.file.filename}` });
+
+  const chemin = nomFichier(req.file);
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(chemin, req.file.buffer, { contentType: req.file.mimetype, cacheControl: '604800' });
+  if (error) throw new ErreurHttp(502, `Envoi de l'image impossible : ${error.message}`);
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(chemin);
+  res.status(201).json({ url: data.publicUrl });
 });
 
 routeurProduits.get('/:id', async (req, res) => {

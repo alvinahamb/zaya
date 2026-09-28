@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Inbox, Package, AlertCircle, Info, AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Download } from 'lucide-react';
 import { useFermerDehors } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
+import { urlFichier } from '../../services/api.js';
 import { Bouton } from './Bouton.jsx';
 
 export function Onglets({ onglets, actif, onChange }) {
@@ -74,7 +75,7 @@ export function ImageProduit({ src, alt = '', taille = 'mini' }) {
   const dimensions = { mini: 20, moyenne: 28, grande: 48 };
   return (
     <div className={`img-produit img-produit--${taille}`}>
-      {src ? <img src={src} alt={alt} loading="lazy" /> : <Package size={dimensions[taille]} strokeWidth={1.5} aria-hidden="true" />}
+      {src ? <img src={urlFichier(src)} alt={alt} loading="lazy" /> : <Package size={dimensions[taille]} strokeWidth={1.5} aria-hidden="true" />}
     </div>
   );
 }

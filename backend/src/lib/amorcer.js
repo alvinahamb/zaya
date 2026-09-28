@@ -34,5 +34,5 @@ export async function amorcerAdmin() {
   await prisma.utilisateur.create({
     data: { nom: 'Admin', email, motDePasse: await bcrypt.hash(motDePasse, 10), role: 'admin' },
   });
-  console.log(`Compte admin créé : ${email} (mot de passe : ${motDePasse})`);
+  console.log(`Compte admin créé : ${email} (mot de passe : ADMIN_MOT_DE_PASSE)`);
 }
