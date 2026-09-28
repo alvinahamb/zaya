@@ -5,6 +5,9 @@ import './index.css';
 import App from './App.jsx';
 import { FournisseurAuth } from './contexts/AuthContext.jsx';
 import { FournisseurToast } from './contexts/ToastContext.jsx';
+import { enregistrerServiceWorker } from './lib/notifications.js';
+
+enregistrerServiceWorker();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

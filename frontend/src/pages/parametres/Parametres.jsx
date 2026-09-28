@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Tags, Share2, Users, KeyRound, UserX, UserCheck, ExternalLink, Contact, Search, Phone } from 'lucide-react';
+import { Plus, Pencil, Trash2, Tags, Share2, Users, KeyRound, UserX, UserCheck, ExternalLink, Contact, Phone } from 'lucide-react';
 import { Categories, Reseaux, Utilisateurs, Clients, messageErreur } from '../../services/api.js';
-import { useApi, useFormulaire } from '../../lib/hooks.js';
+import { useApi, useFormulaire, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { dateCourte, nombre } from '../../lib/format.js';
@@ -12,7 +12,9 @@ import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Modale, Confirmation } from '../../components/ui/Modale.jsx';
 import { Champ, Saisie } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide } from '../../components/ui/Divers.jsx';
+import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
+import { Chargement, Encart, EtatVide, BoutonsCsv } from '../../components/ui/Divers.jsx';
+import { idsParNoms } from '../../lib/csv.js';
 import { FormulaireClient } from './FormulaireClient.jsx';
 
 const SECTIONS = [
@@ -61,7 +63,7 @@ function FormulaireReference({ ouvert, element, titre, champs, api, onFermer, on
   );
 }
 
-function SectionReference({ api, champs, libelleSingulier, libellePluriel, compte, icone: Icone, lienChamp }) {
+function SectionReference({ api, champs, libelleSingulier, libellePluriel, compte, icone: Icone, lienChamp, nomFichier }) {
   const { notifier } = useToast();
   const charger = useCallback(() => api.lister(), [api]);
   const { donnees, chargement, erreur, recharger } = useApi(charger);
@@ -86,7 +88,22 @@ function SectionReference({ api, champs, libelleSingulier, libellePluriel, compt
 
   return (
     <>
-      <Carte titre={libellePluriel} actions={<Bouton variante="principal" taille="petit" icone={Plus} onClick={() => setFormulaire({})}>Ajouter</Bouton>} nu>
+      <Carte
+        titre={libellePluriel}
+        actions={
+          <span className="flex" style={{ gap: 4 }}>
+            <BoutonsCsv
+              nomFichier={nomFichier}
+              colonnes={champs.map((c) => ({ cle: c.nom, titre: c.libelle }))}
+              lignes={donnees}
+              importer={(r) => api.creer(r)}
+              onImporte={recharger}
+            />
+            <Bouton variante="principal" taille="petit" icone={Plus} compact onClick={() => setFormulaire({})}>Ajouter</Bouton>
+          </span>
+        }
+        nu
+      >
         {erreur && <Encart ton="erreur">{erreur}</Encart>}
         {chargement && !donnees ? (
           <Chargement />
@@ -144,8 +161,24 @@ function SectionReference({ api, champs, libelleSingulier, libellePluriel, compt
   );
 }
 
+const COLONNES_CSV_CLIENTS = [
+  { cle: 'nom', titre: 'Nom' },
+  { cle: 'telephone', titre: 'Téléphone' },
+  { cle: 'adresse', titre: 'Adresse' },
+  { cle: 'reseaux', titre: 'Réseaux', valeur: (c) => (c.reseaux ?? []).map((r) => r.nom).join(', ') },
+  { cle: 'note', titre: 'Note' },
+];
+
+const COLONNES_CSV_UTILISATEURS = [
+  { cle: 'nom', titre: 'Nom' },
+  { cle: 'email', titre: 'Email' },
+  { cle: 'actif', titre: 'Actif', valeur: (u) => (u.actif ? 'oui' : 'non') },
+  { cle: 'dateCreation', titre: 'Créé le', valeur: (u) => String(u.dateCreation ?? '').slice(0, 10) },
+];
+
 function SectionClients({ rechercheInitiale = '' }) {
   const { notifier } = useToast();
+  const mobile = useMediaQuery(REQUETE_MOBILE);
   const charger = useCallback(() => Clients.lister(), []);
   const chargerReseaux = useCallback(() => Reseaux.lister(), []);
   const { donnees, chargement, erreur, recharger } = useApi(charger);
@@ -177,14 +210,28 @@ function SectionClients({ rechercheInitiale = '' }) {
 
   return (
     <>
-      <div className="outils">
-        <div className="outils__recherche">
-          <Search size={18} aria-hidden="true" />
-          <Saisie type="search" placeholder="Nom ou téléphone" value={recherche} onChange={(e) => setRecherche(e.target.value)} aria-label="Rechercher un client" />
-        </div>
-        <Bouton variante="principal" icone={Plus} onClick={() => setFormulaire({})}>Nouveau client</Bouton>
-      </div>
-      <Carte titre={`Clients${donnees ? ` (${donnees.length})` : ''}`} nu>
+      <Carte
+        titre={`Clients${donnees ? ` (${donnees.length})` : ''}`}
+        actions={
+          <>
+            {mobile && <RechercheListe repliable valeur={recherche} onChange={setRecherche} placeholder="Nom ou téléphone" libelle="Rechercher un client" />}
+            <BoutonsCsv
+              nomFichier="clients"
+              colonnes={COLONNES_CSV_CLIENTS}
+              lignes={filtres}
+              importer={(r) => Clients.creer({ nom: r.nom, telephone: r.telephone, adresse: r.adresse, note: r.note, idReseaux: idsParNoms(r.reseaux, reseaux, 'Réseau') })}
+              onImporte={recharger}
+            />
+            <Bouton variante="principal" taille="petit" icone={Plus} compact onClick={() => setFormulaire({})}>Nouveau client</Bouton>
+          </>
+        }
+        nu
+      >
+        {!mobile && (
+          <div style={{ padding: '12px 20px 0' }}>
+            <RechercheListe valeur={recherche} onChange={setRecherche} placeholder="Nom ou téléphone" libelle="Rechercher un client" />
+          </div>
+        )}
         {erreur && <Encart ton="erreur">{erreur}</Encart>}
         {chargement && !donnees ? (
           <Chargement />
@@ -246,15 +293,33 @@ function SectionClients({ rechercheInitiale = '' }) {
 
 function SectionUtilisateurs() {
   const { notifier } = useToast();
-  const { utilisateur: moi } = useAuth();
+  const { utilisateur: moi, setUtilisateur } = useAuth();
   const charger = useCallback(() => Utilisateurs.lister(), []);
   const { donnees, chargement, erreur, recharger } = useApi(charger);
   const [creation, setCreation] = useState(false);
   const [motDePassePour, setMotDePassePour] = useState(null);
+  const [aModifier, setAModifier] = useState(null);
   const [aBasculer, setABasculer] = useState(null);
   const [bascule, setBascule] = useState(false);
   const fCreation = useFormulaire({ nom: '', email: '', motDePasse: '' });
   const fMotDePasse = useFormulaire({ motDePasse: '' });
+  const fCompte = useFormulaire({ nom: '', email: '' });
+
+  const ouvrirModification = (u) => {
+    fCompte.reinitialiser({ nom: u.nom ?? '', email: u.email });
+    setAModifier(u);
+  };
+
+  const modifierCompte = async (e) => {
+    e.preventDefault();
+    const r = await fCompte.soumettre(() => Utilisateurs.modifier(aModifier.id, fCompte.valeurs));
+    if (r) {
+      if (r.id === moi?.id) setUtilisateur(r);
+      setAModifier(null);
+      notifier('Compte modifié');
+      recharger();
+    }
+  };
 
   const creer = async (e) => {
     e.preventDefault();
@@ -294,7 +359,16 @@ function SectionUtilisateurs() {
 
   return (
     <>
-      <Carte titre="Comptes utilisateurs" actions={<Bouton variante="principal" taille="petit" icone={Plus} onClick={() => setCreation(true)}>Créer un compte</Bouton>} nu>
+      <Carte
+        titre="Comptes utilisateurs"
+        actions={
+          <span className="flex" style={{ gap: 4 }}>
+            <BoutonsCsv nomFichier="comptes" colonnes={COLONNES_CSV_UTILISATEURS} lignes={donnees} />
+            <Bouton variante="principal" taille="petit" icone={Plus} compact onClick={() => setCreation(true)}>Créer un compte</Bouton>
+          </span>
+        }
+        nu
+      >
         {erreur && <Encart ton="erreur">{erreur}</Encart>}
         {chargement && !donnees ? (
           <Chargement />
@@ -312,6 +386,7 @@ function SectionUtilisateurs() {
                   <div className="element__meta">{u.email} · créé le {dateCourte(u.dateCreation)}</div>
                 </div>
                 <div className="element__actions">
+                  <Bouton variante="discret" taille="petit" icone={Pencil} onClick={() => ouvrirModification(u)} aria-label={`Modifier ${u.email}`} title="Modifier le nom ou l'email" />
                   <Bouton variante="discret" taille="petit" icone={KeyRound} onClick={() => setMotDePassePour(u)} aria-label={`Changer le mot de passe de ${u.email}`} title="Changer le mot de passe" />
                   {u.id !== moi?.id && (
                     <Bouton variante="discret" taille="petit" icone={u.actif ? UserX : UserCheck} onClick={() => setABasculer(u)} aria-label={u.actif ? `Désactiver ${u.email}` : `Réactiver ${u.email}`} title={u.actif ? 'Désactiver' : 'Réactiver'} />
@@ -339,6 +414,24 @@ function SectionUtilisateurs() {
           <Champ libelle="Email" requis>{(id) => <Saisie id={id} name="email" type="email" required autoComplete="off" value={fCreation.valeurs.email} onChange={fCreation.surChangement} />}</Champ>
           <Champ libelle="Mot de passe" requis aide="8 caractères minimum">{(id) => <Saisie id={id} name="motDePasse" type="password" required autoComplete="new-password" value={fCreation.valeurs.motDePasse} onChange={fCreation.surChangement} />}</Champ>
           {fCreation.erreur && <Encart ton="erreur">{fCreation.erreur}</Encart>}
+        </form>
+      </Modale>
+
+      <Modale
+        ouverte={aModifier !== null}
+        titre="Modifier le compte"
+        onFermer={() => setAModifier(null)}
+        pied={
+          <>
+            <Bouton onClick={() => setAModifier(null)} disabled={fCompte.envoi}>Annuler</Bouton>
+            <Bouton variante="principal" type="submit" form="formulaire-compte" chargement={fCompte.envoi}>Enregistrer</Bouton>
+          </>
+        }
+      >
+        <form id="formulaire-compte" className="formulaire" onSubmit={modifierCompte} noValidate>
+          <Champ libelle="Nom">{(id) => <Saisie id={id} name="nom" autoFocus value={fCompte.valeurs.nom} onChange={fCompte.surChangement} />}</Champ>
+          <Champ libelle="Email" requis>{(id) => <Saisie id={id} name="email" type="email" required autoComplete="off" value={fCompte.valeurs.email} onChange={fCompte.surChangement} />}</Champ>
+          {fCompte.erreur && <Encart ton="erreur">{fCompte.erreur}</Encart>}
         </form>
       </Modale>
 
@@ -393,6 +486,7 @@ export function Parametres() {
           {section === 'categories' && (
             <SectionReference
               api={Categories}
+              nomFichier="categories"
               icone={Tags}
               libelleSingulier="Catégorie"
               libellePluriel="Catégories de produits"
@@ -403,6 +497,7 @@ export function Parametres() {
           {section === 'reseaux' && (
             <SectionReference
               api={Reseaux}
+              nomFichier="reseaux"
               icone={Share2}
               libelleSingulier="Réseau"
               libellePluriel="Réseaux sociaux"

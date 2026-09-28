@@ -321,3 +321,64 @@
 .connexion__logo .logo__image {
   height: 130px;
 }
+
+/* Mobile : actions d'en-tête réduites à des icônes, alignées à droite du titre */
+.page__entete,
+.carte__entete {
+  position: relative;
+}
+@media (max-width: 767px) {
+  .page__entete,
+  .carte__entete {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+  .page__entete > div:first-child,
+  .carte__entete > h3 {
+    min-width: 0;
+  }
+  .carte__entete > .flex {
+    flex-shrink: 0;
+    gap: 4px;
+  }
+  .page__actions {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    gap: 4px;
+  }
+  .bouton--compact {
+    width: var(--cible-tactile);
+    padding: 0;
+  }
+  .bouton--compact .bouton__libelle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+  /* Champ de recherche ouvert : recouvre le titre sur toute la largeur */
+  .recherche-repliable {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--fond);
+  }
+  .recherche-repliable .outils__recherche {
+    flex: 1;
+  }
+  .recherche-repliable .saisie {
+    width: 100%;
+    padding-left: 38px;
+  }
+}
+@media (max-width: 767px) {
+  .carte__entete .recherche-repliable {
+    padding: 0 12px;
+    background: var(--surface);
+  }
+}

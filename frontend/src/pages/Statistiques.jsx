@@ -9,7 +9,7 @@ import { Carte, Indicateur } from '../components/ui/Carte.jsx';
 import { Tableau } from '../components/ui/Tableau.jsx';
 import { Montant, Marge } from '../components/ui/Montant.jsx';
 import { Saisie } from '../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport } from '../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, BoutonsCsv } from '../components/ui/Divers.jsx';
 
 /* Mêmes valeurs que les tokens CSS --graphique-* (Recharts a besoin de couleurs résolues). */
 const COULEURS = ['#951010', '#d4a017', '#e9c77a', '#4f7c82', '#3b6ea5', '#c0392b'];
@@ -93,7 +93,10 @@ function Repartition({ donnees, sousTitre }) {
     <Carte nu>
       <div className="carte__entete" style={{ paddingBottom: 0, borderBottom: 0 }}>
         <Onglets onglets={DIMENSIONS} actif={dimension} onChange={setDimension} />
-        <BoutonsExport nomFichier={`stats-${d.libelle.toLowerCase()}`} titre={d.titre} sousTitre={sousTitre} colonnes={COLONNES_EXPORT} lignes={liste} />
+        <span className="flex" style={{ gap: 4 }}>
+          <BoutonsCsv nomFichier={`stats-${d.libelle.toLowerCase()}`} colonnes={COLONNES_EXPORT} lignes={liste} />
+          <BoutonsExport nomFichier={`stats-${d.libelle.toLowerCase()}`} titre={d.titre} sousTitre={sousTitre} colonnes={COLONNES_EXPORT} lignes={liste} />
+        </span>
       </div>
       {liste.length === 0 ? (
         <EtatVide icone={BarChart3} titre="Aucune vente sur la période" />

@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Inbox, Package, AlertCircle, Info, AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Download } from 'lucide-react';
+import { Inbox, Package, AlertCircle, Info, AlertTriangle, CheckCircle2, FileSpreadsheet, FileText, Download, FileDown, FileUp } from 'lucide-react';
 import { useFermerDehors } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { urlFichier } from '../../services/api.js';
 import { Bouton } from './Bouton.jsx';
+import { versCsv, lireCsv, enregistrements } from '../../lib/csv.js';
 
 export function Onglets({ onglets, actif, onChange }) {
   return (
@@ -150,5 +151,71 @@ export function BoutonsExport({ nomFichier, titre, sousTitre, colonnes, lignes }
       <ElementMenu icone={FileSpreadsheet} onClick={() => lancer('excel')}>Excel (.xlsx)</ElementMenu>
       <ElementMenu icone={FileText} onClick={() => lancer('pdf')}>PDF</ElementMenu>
     </MenuDeroulant>
+  );
+}
+
+/**
+ * Export / import CSV d'une liste : deux icônes discrètes.
+ * `importer(enregistrement)` crée un élément à partir d'une ligne ({ cle: texte }) ;
+ * sans `importer`, seule l'icône d'export s'affiche.
+ */
+export function BoutonsCsv({ nomFichier, colonnes, lignes, importer, onImporte }) {
+  const { notifier } = useToast();
+  const champ = useRef(null);
+  const [enCours, setEnCours] = useState(false);
+
+  const exporter = () => {
+    const url = URL.createObjectURL(new Blob([versCsv(colonnes, lignes ?? [])], { type: 'text/csv;charset=utf-8' }));
+    const lien = document.createElement('a');
+    lien.href = url;
+    lien.download = `${nomFichier}.csv`;
+    document.body.appendChild(lien);
+    lien.click();
+    lien.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const lancerImport = async (e) => {
+    const fichier = e.target.files?.[0];
+    e.target.value = '';
+    if (!fichier) return;
+    setEnCours(true);
+    try {
+      const liste = enregistrements(colonnes, lireCsv(await fichier.text()));
+      if (liste.length === 0) {
+        notifier('Aucune ligne à importer', 'erreur');
+        return;
+      }
+      let reussis = 0;
+      const erreurs = [];
+      // Séquentiel : garde l'ordre du fichier et évite de saturer l'API
+      for (const [i, enregistrement] of liste.entries()) {
+        try {
+          await importer(enregistrement);
+          reussis++;
+        } catch (err) {
+          erreurs.push(`ligne ${i + 2} : ${err?.response?.data?.message ?? err?.message ?? 'erreur'}`);
+        }
+      }
+      if (reussis) onImporte?.();
+      if (erreurs.length === 0) notifier(`${reussis} ligne${reussis > 1 ? 's' : ''} importée${reussis > 1 ? 's' : ''}`);
+      else notifier(`${reussis} importée${reussis > 1 ? 's' : ''}, ${erreurs.length} en erreur (${erreurs[0]}${erreurs.length > 1 ? '…' : ''})`, 'erreur');
+    } catch {
+      notifier('Fichier CSV illisible', 'erreur');
+    } finally {
+      setEnCours(false);
+    }
+  };
+
+  return (
+    <span className="boutons-csv">
+      <Bouton variante="discret" taille="petit" icone={FileDown} onClick={exporter} disabled={!lignes?.length} title="Exporter en CSV" aria-label="Exporter en CSV" />
+      {importer && (
+        <>
+          <Bouton variante="discret" taille="petit" icone={FileUp} onClick={() => champ.current?.click()} chargement={enCours} title="Importer un CSV" aria-label="Importer un CSV" />
+          <input ref={champ} type="file" accept=".csv,text/csv" hidden onChange={lancerImport} />
+        </>
+      )}
+    </span>
   );
 }

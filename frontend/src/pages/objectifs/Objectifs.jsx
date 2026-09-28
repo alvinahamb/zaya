@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Target, CheckCircle2, RotateCcw, Ban, CalendarDays } from 'lucide-react';
 import { Objectifs as ApiObjectifs, messageErreur } from '../../services/api.js';
-import { useApi } from '../../lib/hooks.js';
+import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { dateCourte, aujourdhuiISO, versInputDate, pourcentage, pluriel, CATEGORIES_OBJECTIF, LIBELLES_STATUT_OBJECTIF } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
@@ -11,11 +11,35 @@ import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Saisie } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, BoutonsCsv } from '../../components/ui/Divers.jsx';
+import { nombreCsv, dateCsv, codeCsv } from '../../lib/csv.js';
 import { FormulaireObjectif } from './FormulaireObjectif.jsx';
 
 const formatValeur = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
 const formatMois = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' });
+
+const COLONNES_CSV = [
+  { cle: 'title', titre: 'Titre' },
+  { cle: 'category', titre: 'Catégorie', valeur: (o) => CATEGORIES_OBJECTIF[o.category] ?? '' },
+  { cle: 'description', titre: 'Description' },
+  { cle: 'targetValue', titre: 'Cible' },
+  { cle: 'currentValue', titre: 'Actuel' },
+  { cle: 'unit', titre: 'Unité' },
+  { cle: 'startDate', titre: 'Début', valeur: (o) => versInputDate(o.startDate) },
+  { cle: 'endDate', titre: 'Fin', valeur: (o) => versInputDate(o.endDate) },
+  { cle: 'status', titre: 'Statut', valeur: (o) => LIBELLES_STATUT_OBJECTIF[o.status] },
+];
+
+const importerObjectif = (r) =>
+  ApiObjectifs.creer({
+    ...r,
+    category: codeCsv(r.category, CATEGORIES_OBJECTIF),
+    status: codeCsv(r.status, LIBELLES_STATUT_OBJECTIF),
+    targetValue: nombreCsv(r.targetValue),
+    currentValue: nombreCsv(r.currentValue),
+    startDate: dateCsv(r.startDate),
+    endDate: dateCsv(r.endDate),
+  });
 
 const TON_STATUT = { en_cours: 'info', atteint: 'succes', abandonne: 'neutre' };
 const ICONE_STATUT = { en_cours: Target, atteint: CheckCircle2, abandonne: Ban };
@@ -164,6 +188,7 @@ function CarteObjectif({ objectif, onModifier, onSupprimer, onStatut, onProgress
 /** Objectifs du mois de l'utilisateur connecté : progression, échéances et rappels. */
 export function Objectifs() {
   const { notifier } = useToast();
+  const mobile = useMediaQuery(REQUETE_MOBILE);
   const [params, setParams] = useSearchParams();
   const moisCourant = aujourdhuiISO().slice(0, 7);
   const mois = /^\d{4}-\d{2}$/.test(params.get('mois') ?? '') ? params.get('mois') : moisCourant;
@@ -246,11 +271,13 @@ export function Objectifs() {
       sousTitre={`${libelleMois(mois)} · ${pluriel(objectifs.length, 'objectif')}`}
       actions={
         <>
-          {selecteurMois}
-          <Bouton variante="principal" icone={Plus} onClick={() => setFormulaire({})}>Nouvel objectif</Bouton>
+          <BoutonsCsv nomFichier={`objectifs-${mois}`} colonnes={COLONNES_CSV} lignes={objectifs} importer={importerObjectif} onImporte={recharger} />
+          {!mobile && selecteurMois}
+          <Bouton variante="principal" icone={Plus} compact onClick={() => setFormulaire({})}>Nouvel objectif</Bouton>
         </>
       }
     >
+      {mobile && <div className="espace-bas">{selecteurMois}</div>}
       {erreur && <Encart ton="erreur">{erreur}</Encart>}
       {chargement && !donnees ? (
         <Chargement />

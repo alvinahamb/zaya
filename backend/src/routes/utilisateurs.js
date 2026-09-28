@@ -38,10 +38,16 @@ routeurUtilisateurs.post('/', async (req, res) => {
 
 routeurUtilisateurs.patch('/:id', async (req, res) => {
   const id = entierId(req.params.id);
-  const { nom, actif, motDePasse } = req.body ?? {};
+  const { nom, email, actif, motDePasse } = req.body ?? {};
   const donnees = {};
 
   if (nom !== undefined) donnees.nom = nom ? String(nom).trim() : null;
+  if (email !== undefined) {
+    exiger(email && /\S+@\S+\.\S+/.test(email), 'Email invalide');
+    donnees.email = String(email).trim().toLowerCase();
+    const doublon = await prisma.utilisateur.findFirst({ where: { email: donnees.email, id: { not: id } } });
+    if (doublon) throw new ErreurHttp(409, 'Cet email est déjà utilisé par un autre compte');
+  }
   if (actif !== undefined) {
     if (id === req.utilisateur.id && !actif) {
       throw new ErreurHttp(400, 'Vous ne pouvez pas désactiver votre propre compte');

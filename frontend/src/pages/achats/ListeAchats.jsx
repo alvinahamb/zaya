@@ -1,17 +1,19 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, ShoppingBag, Search } from 'lucide-react';
+import { Plus, ShoppingBag } from 'lucide-react';
 import { Achats } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
-import { dateCourte, euro, ariary, pourcentage, LIBELLES_STATUT_ACHAT } from '../../lib/format.js';
+import { dateCourte, versInputDate, euro, ariary, pourcentage, LIBELLES_STATUT_ACHAT } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Tableau } from '../../components/ui/Tableau.jsx';
 import { BadgeStatutAchat, BadgeFigement } from '../../components/ui/Badge.jsx';
 import { Montant, Marge } from '../../components/ui/Montant.jsx';
-import { Saisie, Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, BoutonsExport } from '../../components/ui/Divers.jsx';
+import { Selection } from '../../components/ui/Champs.jsx';
+import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
+import { Chargement, Encart, EtatVide, BoutonsExport, BoutonsCsv } from '../../components/ui/Divers.jsx';
+import { nombreCsv, dateCsv } from '../../lib/csv.js';
 import { FormulaireAchat } from './FormulaireAchat.jsx';
 
 const COLONNES_EXPORT = [
@@ -25,6 +27,30 @@ const COLONNES_EXPORT = [
   { cle: 'sommeAr', titre: 'Payé (Ar)', valeur: (a) => Number(a.sommeAr), texte: (a) => ariary(a.sommeAr), align: 'droite' },
   { cle: 'margeEstimee', titre: 'Marge estimée', valeur: (a) => a.recap.margeEstimeePct, texte: (a) => pourcentage(a.recap.margeEstimeePct), align: 'droite' },
 ];
+
+// Import : crée l'en-tête de la commande ; les produits se tarifent ensuite dans la fiche
+const COLONNES_CSV = [
+  { cle: 'nom', titre: 'Nom' },
+  { cle: 'description', titre: 'Description' },
+  { cle: 'dateCommande', titre: 'Commandée le', valeur: (a) => versInputDate(a.dateCommande) },
+  { cle: 'dateArriveeEstimee', titre: 'Arrivée estimée', valeur: (a) => versInputDate(a.dateArriveeEstimee) },
+  { cle: 'dateArrivee', titre: 'Arrivée réelle', valeur: (a) => versInputDate(a.dateArrivee) },
+  { cle: 'sommeTotale', titre: 'Total (€)', valeur: (a) => a.sommeEffective },
+  { cle: 'sommeAr', titre: 'Payé (Ar)' },
+  { cle: 'statut', titre: 'Statut', valeur: (a) => LIBELLES_STATUT_ACHAT[a.statut] },
+  { cle: 'nbProduits', titre: 'Produits' },
+];
+
+const importerAchat = (r) =>
+  Achats.creer({
+    nom: r.nom,
+    description: r.description,
+    dateCommande: dateCsv(r.dateCommande),
+    dateArriveeEstimee: dateCsv(r.dateArriveeEstimee),
+    dateArrivee: dateCsv(r.dateArrivee),
+    sommeTotale: nombreCsv(r.sommeTotale),
+    sommeAr: nombreCsv(r.sommeAr),
+  });
 
 /** Carte mobile d'une commande : titre, dates, statut, puis trois chiffres clés. */
 function CarteAchat({ achat: a }) {
@@ -72,7 +98,7 @@ export function ListeAchats() {
   const [params, setParams] = useSearchParams();
   const mobile = useMediaQuery(REQUETE_MOBILE);
   const charger = useCallback(() => Achats.lister(), []);
-  const { donnees, chargement, erreur } = useApi(charger);
+  const { donnees, chargement, erreur, recharger } = useApi(charger);
   const [recherche, setRecherche] = useState('');
   const [statut, setStatut] = useState('');
 
@@ -120,16 +146,16 @@ export function ListeAchats() {
     <Page
       titre="Achats"
       actions={
-        <Bouton variante="principal" icone={Plus} onClick={() => setParams({ nouveau: '1' })}>
-          Nouvelle commande
-        </Bouton>
+        <>
+          {mobile && <RechercheListe repliable valeur={recherche} onChange={setRecherche} placeholder="Rechercher une commande" />}
+          <Bouton variante="principal" icone={Plus} compact onClick={() => setParams({ nouveau: '1' })}>
+            Nouvelle commande
+          </Bouton>
+        </>
       }
     >
       <div className="outils">
-        <div className="outils__recherche">
-          <Search size={18} aria-hidden="true" />
-          <Saisie type="search" placeholder="Rechercher une commande" value={recherche} onChange={(e) => setRecherche(e.target.value)} aria-label="Rechercher" />
-        </div>
+        {!mobile && <RechercheListe valeur={recherche} onChange={setRecherche} placeholder="Rechercher une commande" />}
         <Selection
           value={statut}
           onChange={(e) => setStatut(e.target.value)}
@@ -137,7 +163,8 @@ export function ListeAchats() {
           options={Object.entries(LIBELLES_STATUT_ACHAT).map(([valeur, libelle]) => ({ valeur, libelle }))}
           aria-label="Filtrer par statut"
         />
-        <div className="pousser">
+        <div className="pousser flex" style={{ gap: 4 }}>
+          <BoutonsCsv nomFichier="achats" colonnes={COLONNES_CSV} lignes={filtres} importer={importerAchat} onImporte={recharger} />
           <BoutonsExport nomFichier="achats" titre="Achats" colonnes={COLONNES_EXPORT} lignes={filtres} />
         </div>
       </div>

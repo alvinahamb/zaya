@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Plus, Bell, BellRing, Settings, LogOut, ShoppingBag, Receipt, Package, Megaphone, Inbox, Target } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { Accueil } from '../../services/api.js';
 import { Bouton } from '../ui/Bouton.jsx';
 import { MenuDeroulant, ElementMenu } from '../ui/Divers.jsx';
 import { Recherche } from './Recherche.jsx';
+import { RecapJour } from './RecapJour.jsx';
+import { permissionNavigateur, afficherNotification } from '../../lib/notifications.js';
 import { Logo } from './Logo.jsx';
 import { dateCourte, aujourdhuiISO, LIBELLES_QUAND } from '../../lib/format.js';
 
@@ -39,8 +41,6 @@ function initiales(utilisateur) {
 
 const CLE_SIGNALEES = 'zaya.notifications.signalees';
 
-const permissionNavigateur = () => (typeof Notification === 'undefined' ? 'indisponible' : Notification.permission);
-
 /**
  * Rappels du navigateur : une notification système par tâche à faire demain
  * ou aujourd'hui, une seule fois par jour et par tâche (mémorisé localement).
@@ -56,18 +56,11 @@ function signalerNavigateur(notifications) {
   }
   const nouvelles = notifications.filter((n) => (n.quand === 'demain' || n.quand === 'jour') && signalees[n.id] !== ceJour);
   for (const n of nouvelles.slice(0, 5)) {
-    try {
-      const notification = new Notification(`${LIBELLES_QUAND[n.quand]} : ${n.libelle}`, {
-        body: [n.module, n.detail, n.echeance ? dateCourte(n.echeance) : null].filter(Boolean).join(' · '),
-        tag: n.id,
-      });
-      notification.onclick = () => {
-        window.focus();
-        window.location.assign(n.lien);
-      };
-    } catch {
-      /* navigateur sans notifications système */
-    }
+    afficherNotification(`${LIBELLES_QUAND[n.quand]} : ${n.libelle}`, {
+      corps: [n.module, n.detail, n.echeance ? dateCourte(n.echeance) : null].filter(Boolean).join(' · '),
+      tag: n.id,
+      lien: n.lien,
+    });
     signalees[n.id] = ceJour;
   }
   // On ne garde que les rappels du jour
@@ -111,14 +104,25 @@ export function BarreHaut() {
   const [rechercheOuverte, setRechercheOuverte] = useState(false);
   const notifications = useNotifications();
   const [permission, setPermission] = useState(permissionNavigateur);
+  const naviguer = useNavigate();
 
   const activerRappels = async () => {
     try {
-      setPermission(await Notification.requestPermission());
+      const reponse = await Notification.requestPermission();
+      setPermission(reponse);
+      if (reponse === 'granted') signalerNavigateur(notifications);
     } catch {
       setPermission(permissionNavigateur());
     }
   };
+
+  // Clic sur une notification système : le service worker demande d'ouvrir la page liée
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return undefined;
+    const surMessage = (e) => e.data?.type === 'zaya:naviguer' && naviguer(e.data.lien);
+    navigator.serviceWorker.addEventListener('message', surMessage);
+    return () => navigator.serviceWorker.removeEventListener('message', surMessage);
+  }, [naviguer]);
 
   useEffect(() => {
     const surTouche = (e) => {
@@ -222,6 +226,7 @@ export function BarreHaut() {
       </header>
 
       {rechercheOuverte && <Recherche onFermer={() => setRechercheOuverte(false)} />}
+      <RecapJour notifications={notifications} permission={permission} onActiverRappels={activerRappels} />
     </>
   );
 }
