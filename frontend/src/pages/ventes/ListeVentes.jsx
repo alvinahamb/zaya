@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, Receipt } from 'lucide-react';
 import { Ventes, Reseaux } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
-import { dateCourte, ariary, nombre, aujourdhuiISO } from '../../lib/format.js';
+import { dateCourte, versInputDate, ariary, nombre, aujourdhuiISO, LIBELLES_STATUT_LIVRAISON } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { BoutonLien } from '../../components/ui/Bouton.jsx';
@@ -11,7 +11,7 @@ import { Tableau } from '../../components/ui/Tableau.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Montant } from '../../components/ui/Montant.jsx';
 import { Saisie, Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, BoutonsExport, Onglets } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, BoutonsExport, BoutonsCsv, Onglets } from '../../components/ui/Divers.jsx';
 import { BadgeStatutLivraison } from '../../components/ui/Badge.jsx';
 import { OngletLivraisons } from './OngletLivraisons.jsx';
 
@@ -23,6 +23,18 @@ const COLONNES_EXPORT = [
   { cle: 'nbArticles', titre: 'Articles', align: 'droite' },
   { cle: 'reductionAr', titre: 'Réduction (Ar)', valeur: (v) => Number(v.reductionAr), texte: (v) => ariary(v.reductionAr), align: 'droite' },
   { cle: 'sommeAr', titre: 'Total (Ar)', valeur: (v) => Number(v.sommeAr), texte: (v) => ariary(v.sommeAr), align: 'droite' },
+];
+
+const COLONNES_CSV = [
+  { cle: 'id', titre: 'N° vente' },
+  { cle: 'dateVente', titre: 'Date', valeur: (v) => versInputDate(v.dateVente) },
+  { cle: 'nom', titre: 'Libellé' },
+  { cle: 'client', titre: 'Client', valeur: (v) => v.client?.nom },
+  { cle: 'reseaux', titre: 'Réseaux', valeur: (v) => (v.reseaux ?? []).map((r) => r.nom).join(', ') },
+  { cle: 'livraison', titre: 'Livraison', valeur: (v) => (v.livraison ? LIBELLES_STATUT_LIVRAISON[v.livraison.statut] : '') },
+  { cle: 'nbArticles', titre: 'Articles' },
+  { cle: 'reductionAr', titre: 'Réduction (Ar)' },
+  { cle: 'sommeAr', titre: 'Total (Ar)' },
 ];
 
 function debutMois() {
@@ -94,7 +106,7 @@ export function ListeVentes() {
   );
 
   return (
-    <Page titre="Ventes" actions={<BoutonLien variante="principal" icone={Plus} to="/ventes/nouvelle">Nouvelle vente</BoutonLien>}>
+    <Page titre="Ventes" actions={<BoutonLien variante="principal" icone={Plus} compact to="/ventes/nouvelle">Nouvelle vente</BoutonLien>}>
       <div className="espace-bas">
         <Onglets
           onglets={[{ cle: 'ventes', libelle: 'Ventes' }, { cle: 'livraisons', libelle: 'Livraisons' }]}
@@ -109,7 +121,8 @@ export function ListeVentes() {
         <span className="secondaire petit">au</span>
         <Saisie type="date" value={au} onChange={(e) => setAu(e.target.value)} aria-label="Au" />
         <Selection value={reseau} onChange={(e) => setReseau(e.target.value)} placeholder="Tous les réseaux" options={(reseaux ?? []).map((r) => ({ valeur: String(r.id), libelle: r.nom }))} aria-label="Filtrer par réseau" />
-        <div className="pousser">
+        <div className="pousser flex" style={{ gap: 4 }}>
+          <BoutonsCsv nomFichier="ventes" colonnes={COLONNES_CSV} lignes={liste} />
           <BoutonsExport nomFichier="ventes" titre="Ventes" sousTitre={`Du ${dateCourte(du)} au ${dateCourte(au)}`} colonnes={COLONNES_EXPORT} lignes={liste} />
         </div>
       </div>

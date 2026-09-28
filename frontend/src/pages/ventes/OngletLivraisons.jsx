@@ -1,19 +1,36 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Truck, CheckCircle2, ArrowRight } from 'lucide-react';
-import { Livraisons, messageErreur } from '../../services/api.js';
+import { Livraisons, Clients, messageErreur } from '../../services/api.js';
 import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
-import { ariary, dateHeure, dateCourte, LIBELLES_STATUT_LIVRAISON, SUIVANT_LIVRAISON } from '../../lib/format.js';
+import { ariary, dateHeure, dateCourte, versInputDateHeure, LIBELLES_STATUT_LIVRAISON, SUIVANT_LIVRAISON } from '../../lib/format.js';
+import { nombreCsv, dateCsv, codeCsv, idParNom } from '../../lib/csv.js';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton, BoutonLien } from '../../components/ui/Bouton.jsx';
 import { BadgeStatutLivraison } from '../../components/ui/Badge.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, BoutonsCsv } from '../../components/ui/Divers.jsx';
 
 const FILTRES = [{ valeur: 'actives', libelle: 'En cours (à programmer, programmées, en livraison)' }].concat(
   Object.entries(LIBELLES_STATUT_LIVRAISON).map(([valeur, libelle]) => ({ valeur, libelle })),
 );
+
+const dateHeureCsv = (iso) => versInputDateHeure(iso).replace('T', ' ');
+
+const COLONNES_CSV = [
+  { cle: 'idVente', titre: 'N° vente', valeur: (l) => l.Vente?.id },
+  { cle: 'client', titre: 'Client', valeur: (l) => l.Client?.nom },
+  { cle: 'statut', titre: 'Statut', valeur: (l) => LIBELLES_STATUT_LIVRAISON[l.statut] },
+  { cle: 'libelle', titre: 'Libellé' },
+  { cle: 'adresse', titre: 'Adresse' },
+  { cle: 'telephone', titre: 'Téléphone' },
+  { cle: 'livreur', titre: 'Livreur' },
+  { cle: 'fraisAr', titre: 'Frais (Ar)' },
+  { cle: 'dateHeureAppelLivreur', titre: 'Appel livreur', valeur: (l) => dateHeureCsv(l.dateHeureAppelLivreur) },
+  { cle: 'dateHeureLivraison', titre: 'Livraison prévue', valeur: (l) => dateHeureCsv(l.dateHeureLivraison) },
+  { cle: 'note', titre: 'Note' },
+];
 
 /** Toutes les livraisons, avec avancement du statut en un clic. */
 export function OngletLivraisons() {
@@ -22,6 +39,23 @@ export function OngletLivraisons() {
   const charger = useCallback(() => Livraisons.lister(filtre === 'actives' ? {} : { statut: filtre }), [filtre]);
   const { donnees, chargement, erreur, recharger } = useApi(charger);
   const [enCours, setEnCours] = useState(null);
+  const chargerClients = useCallback(() => Clients.lister(), []);
+  const { donnees: clients } = useApi(chargerClients);
+
+  const importer = (r) =>
+    Livraisons.creer({
+      libelle: r.libelle,
+      adresse: r.adresse,
+      telephone: r.telephone,
+      livreur: r.livreur,
+      note: r.note,
+      idVente: nombreCsv(r.idVente),
+      idClient: idParNom(r.client, clients, 'Client'),
+      statut: codeCsv(r.statut, LIBELLES_STATUT_LIVRAISON),
+      fraisAr: nombreCsv(r.fraisAr),
+      dateHeureAppelLivreur: dateCsv(r.dateHeureAppelLivreur),
+      dateHeureLivraison: dateCsv(r.dateHeureLivraison),
+    });
 
   const liste = (donnees ?? []).filter((l) => filtre !== 'actives' || ['a_programmer', 'programmee', 'en_cours'].includes(l.statut));
 
@@ -44,6 +78,9 @@ export function OngletLivraisons() {
     <>
       <div className="outils">
         <Selection value={filtre} onChange={(e) => setFiltre(e.target.value)} options={FILTRES} aria-label="Filtrer par statut" />
+        <div className="pousser">
+          <BoutonsCsv nomFichier="livraisons" colonnes={COLONNES_CSV} lignes={liste} importer={importer} onImporte={recharger} />
+        </div>
       </div>
       {erreur && <Encart ton="erreur">{erreur}</Encart>}
       <Carte nu>

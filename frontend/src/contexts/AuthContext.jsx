@@ -35,7 +35,8 @@ export function FournisseurAuth({ children }) {
   }, []);
 
   const valeur = useMemo(
-    () => ({ utilisateur, pret, connecter, deconnecter }),
+    // setUtilisateur : reflète une modification de son propre compte (nom, email)
+    () => ({ utilisateur, pret, connecter, deconnecter, setUtilisateur }),
     [utilisateur, pret, connecter, deconnecter],
   );
 

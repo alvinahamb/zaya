@@ -839,3 +839,10 @@
   width: 100%;
   padding-left: 38px;
 }
+
+/* Icônes CSV (export / import) en tête de liste */
+.boutons-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}

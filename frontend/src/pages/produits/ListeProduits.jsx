@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Plus, Search, LayoutGrid, List, Package } from 'lucide-react';
+import { Plus, LayoutGrid, List, Package } from 'lucide-react';
 import { Produits, Categories } from '../../services/api.js';
-import { useApi } from '../../lib/hooks.js';
+import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { euro, ariary } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
@@ -11,8 +11,10 @@ import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Tableau } from '../../components/ui/Tableau.jsx';
 import { BadgeStock } from '../../components/ui/Badge.jsx';
 import { Montant } from '../../components/ui/Montant.jsx';
-import { Saisie, Selection } from '../../components/ui/Champs.jsx';
-import { Chargement, Encart, EtatVide, Segment, ImageProduit, BoutonsExport } from '../../components/ui/Divers.jsx';
+import { Selection } from '../../components/ui/Champs.jsx';
+import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
+import { Chargement, Encart, EtatVide, Segment, ImageProduit, BoutonsExport, BoutonsCsv } from '../../components/ui/Divers.jsx';
+import { nombreCsv, idParNom } from '../../lib/csv.js';
 import { FormulaireProduit } from './FormulaireProduit.jsx';
 
 const COLONNES_EXPORT = [
@@ -23,6 +25,18 @@ const COLONNES_EXPORT = [
   { cle: 'prix', titre: "Prix d'achat (€)", valeur: (p) => (p.prix === null ? null : Number(p.prix)), texte: (p) => euro(p.prix), align: 'droite' },
   { cle: 'prixVenteAr', titre: 'Prix de vente (Ar)', valeur: (p) => (p.prixVenteAr === null ? null : Number(p.prixVenteAr)), texte: (p) => ariary(p.prixVenteAr), align: 'droite' },
   { cle: 'stockRestant', titre: 'Stock restant', align: 'droite' },
+];
+
+const COLONNES_CSV = [
+  { cle: 'nom', titre: 'Nom' },
+  { cle: 'categorie', titre: 'Catégorie', valeur: (p) => p.categorie?.nom },
+  { cle: 'materiel', titre: 'Matériel' },
+  { cle: 'codeShein', titre: 'Code Shein' },
+  { cle: 'description', titre: 'Description' },
+  { cle: 'prix', titre: "Prix d'achat (€)" },
+  { cle: 'prixVenteAr', titre: 'Prix de vente (Ar)' },
+  { cle: 'image', titre: 'Image' },
+  { cle: 'stockRestant', titre: 'Stock restant' },
 ];
 
 const CLE_VUE = 'zaya.produits.vue';
@@ -49,6 +63,7 @@ function CarteProduit({ produit }) {
 export function ListeProduits() {
   const naviguer = useNavigate();
   const { notifier } = useToast();
+  const mobile = useMediaQuery(REQUETE_MOBILE);
   const [params, setParams] = useSearchParams();
   const chargerProduits = useCallback(() => Produits.lister(), []);
   const chargerCategories = useCallback(() => Categories.lister(), []);
@@ -117,16 +132,30 @@ export function ListeProduits() {
   return (
     <Page
       titre="Produits"
-      actions={<Bouton variante="principal" icone={Plus} onClick={() => setParams({ nouveau: '1' })}>Nouveau produit</Bouton>}
+      actions={
+        <>
+          {mobile && <RechercheListe repliable valeur={recherche} onChange={setRecherche} placeholder="Nom ou code Shein" libelle="Rechercher un produit" />}
+          <Bouton variante="principal" icone={Plus} compact onClick={() => setParams({ nouveau: '1' })}>Nouveau produit</Bouton>
+        </>
+      }
     >
       <div className="outils">
-        <div className="outils__recherche">
-          <Search size={18} aria-hidden="true" />
-          <Saisie type="search" placeholder="Nom ou code Shein" value={recherche} onChange={(e) => setRecherche(e.target.value)} aria-label="Rechercher un produit" />
-        </div>
+        {!mobile && <RechercheListe valeur={recherche} onChange={setRecherche} placeholder="Nom ou code Shein" libelle="Rechercher un produit" />}
         <Selection value={categorie} onChange={(e) => setCategorie(e.target.value)} placeholder="Toutes les catégories" options={(categories ?? []).map((c) => ({ valeur: String(c.id), libelle: c.nom }))} aria-label="Filtrer par catégorie" />
         <Segment libelle="Affichage" valeur={vue} onChange={changerVue} options={[{ valeur: 'grille', libelle: 'Grille', icone: LayoutGrid }, { valeur: 'tableau', libelle: 'Tableau', icone: List }]} />
-        <div className="pousser">
+        <div className="pousser flex" style={{ gap: 4 }}>
+          <BoutonsCsv
+            nomFichier="produits"
+            colonnes={COLONNES_CSV}
+            lignes={filtres}
+            importer={(r) => Produits.creer({
+              ...r,
+              idCategorie: idParNom(r.categorie, categories, 'Catégorie'),
+              prix: nombreCsv(r.prix),
+              prixVenteAr: nombreCsv(r.prixVenteAr),
+            })}
+            onImporte={recharger}
+          />
           <BoutonsExport nomFichier="produits" titre="Produits" colonnes={COLONNES_EXPORT} lignes={filtres} />
         </div>
       </div>

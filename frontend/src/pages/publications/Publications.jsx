@@ -4,7 +4,7 @@ import { Plus, ChevronLeft, ChevronRight, CalendarDays, LayoutGrid, Megaphone, E
 import { Publications as ApiPublications, Reseaux, Achats, messageErreur } from '../../services/api.js';
 import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
-import { dateHeure, aujourdhuiISO, LIBELLES_STATUT_PUBLICATION } from '../../lib/format.js';
+import { dateHeure, versInputDateHeure, aujourdhuiISO, LIBELLES_STATUT_PUBLICATION } from '../../lib/format.js';
 import { cleJour, debutSemaine } from '../../lib/calendrier.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
@@ -12,7 +12,8 @@ import { Bouton } from '../../components/ui/Bouton.jsx';
 import { BadgeStatutPublication } from '../../components/ui/Badge.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
-import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsExport, BoutonsCsv, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
+import { dateCsv, codeCsv, idParNom, idsParNoms } from '../../lib/csv.js';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
 import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
@@ -27,6 +28,17 @@ const COLONNES_EXPORT = [
   { cle: 'reseaux', titre: 'Réseaux', valeur: (p) => p.reseaux.map((r) => r.nom).join(', ') },
   { cle: 'achat', titre: 'Commande', valeur: (p) => p.achat?.nom },
   { cle: 'totalBoostsAr', titre: 'Boosts (Ar)', align: 'droite' },
+  { cle: 'lienPinterest', titre: 'Lien Pinterest' },
+  { cle: 'lienContenu', titre: 'Lien contenu' },
+];
+
+const COLONNES_CSV = [
+  { cle: 'nom', titre: 'Nom' },
+  { cle: 'dateHeurePublication', titre: 'Date', valeur: (p) => versInputDateHeure(p.dateHeurePublication).replace('T', ' ') },
+  { cle: 'statut', titre: 'Statut', valeur: (p) => LIBELLES_STATUT_PUBLICATION[p.statut] },
+  { cle: 'reseaux', titre: 'Réseaux', valeur: (p) => p.reseaux.map((r) => r.nom).join(', ') },
+  { cle: 'achat', titre: 'Commande', valeur: (p) => p.achat?.nom },
+  { cle: 'description', titre: 'Description' },
   { cle: 'lienPinterest', titre: 'Lien Pinterest' },
   { cle: 'lienContenu', titre: 'Lien contenu' },
 ];
@@ -196,7 +208,7 @@ export function Publications() {
   };
 
   return (
-    <Page titre="Publications" actions={<Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>}>
+    <Page titre="Publications" actions={<Bouton variante="principal" icone={Plus} compact onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>}>
       <div className="espace-bas">
         <Onglets
           onglets={[{ cle: 'calendrier', libelle: 'Calendrier' }, { cle: 'liste', libelle: 'Liste', compteur: onglet === 'liste' ? listeTriee.length : undefined }]}
@@ -220,7 +232,23 @@ export function Publications() {
           <>
             <Selection value={statut} onChange={(e) => setStatut(e.target.value)} placeholder="Tous les statuts" options={FILTRES_STATUT} aria-label="Filtrer par statut" />
             <Selection value={reseau} onChange={(e) => setReseau(e.target.value)} placeholder="Tous les réseaux" options={(reseaux ?? []).map((r) => ({ valeur: String(r.id), libelle: r.nom }))} aria-label="Filtrer par réseau" />
-            <div className="pousser">
+            <div className="pousser flex" style={{ gap: 4 }}>
+              <BoutonsCsv
+                nomFichier="publications"
+                colonnes={COLONNES_CSV}
+                lignes={listeTriee}
+                importer={(r) => ApiPublications.creer({
+                  nom: r.nom,
+                  description: r.description,
+                  lienPinterest: r.lienPinterest,
+                  lienContenu: r.lienContenu,
+                  dateHeurePublication: dateCsv(r.dateHeurePublication),
+                  statut: codeCsv(r.statut, LIBELLES_STATUT_PUBLICATION),
+                  idReseaux: idsParNoms(r.reseaux, reseaux, 'Réseau'),
+                  idAchat: idParNom(r.achat, achats, 'Commande'),
+                })}
+                onImporte={recharger}
+              />
               <BoutonsExport nomFichier="publications" titre="Publications" colonnes={COLONNES_EXPORT} lignes={listeTriee} />
             </div>
           </>
