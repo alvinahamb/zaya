@@ -460,7 +460,21 @@
 @media (min-width: 768px) {
   .fiche-produit {
     grid-template-columns: 340px 1fr;
-    align-items: start;
+    align-items: stretch;
+  }
+  /* La photo principale prend la hauteur de la carte « Informations » (qui fixe la rangée) */
+  .fiche-produit > .galerie,
+  .fiche-produit > .img-produit--grande {
+    height: 0;
+    min-height: 100%;
+  }
+  .fiche-produit > .img-produit--grande,
+  .fiche-produit > .galerie > .img-produit--grande {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  .fiche-produit > .galerie {
+    grid-template-rows: 100%;
   }
 }
 
@@ -1108,17 +1122,34 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Accueil : « À surveiller » prend la hauteur de « Tâches du jour » et défile à l'intérieur */
+/* Accueil : « Tâches » prend la hauteur de « Objectifs à venir » et défile à l'intérieur */
 .accueil__grille {
   display: grid;
   gap: 16px;
   grid-template-columns: 1fr;
   align-items: stretch;
 }
+.accueil__taches {
+  display: flex;
+  flex-direction: column;
+}
+.accueil__taches .carte__corps {
+  max-height: 60vh;
+  overflow-y: auto;
+}
 @media (min-width: 768px) {
   .accueil__grille {
     grid-template-columns: 1fr 1fr;
-    align-items: start;
+  }
+  /* Hauteur nulle + min-height 100 % : la carte suit la rangée (fixée par les objectifs) sans l'agrandir */
+  .accueil__taches {
+    height: 0;
+    min-height: 100%;
+  }
+  .accueil__taches .carte__corps {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
   }
 }
 

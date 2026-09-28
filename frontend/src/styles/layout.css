@@ -411,11 +411,8 @@
   align-items: center;
   justify-content: center;
   padding: 40px var(--gouttiere);
-  /* Fond crème avec deux halos très doux aux couleurs du logo */
-  background:
-    radial-gradient(60rem 40rem at 15% -10%, rgba(149, 16, 16, 0.07), transparent 60%),
-    radial-gradient(50rem 35rem at 110% 110%, rgba(233, 199, 122, 0.22), transparent 60%),
-    var(--fond-doux);
+  /* Même fond que l'écran de connexion */
+  background: var(--fond);
 }
 .espaces__contenu {
   width: 100%;
@@ -484,7 +481,7 @@
 }
 .espace:focus-visible {
   box-shadow:
-    0 0 0 3px var(--fond-doux),
+    0 0 0 3px var(--fond),
     0 0 0 5px var(--principale),
     0 24px 48px -16px rgba(149, 16, 16, 0.28);
 }
