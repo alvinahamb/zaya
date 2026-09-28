@@ -26,6 +26,7 @@ const COLONNES_CSV = [
   { cle: 'prix', titre: "Prix d'achat (€)" },
   { cle: 'prixVenteAr', titre: 'Prix de vente (Ar)' },
   { cle: 'image', titre: 'Image' },
+  { cle: 'images', titre: 'Autres photos', valeur: (p) => (p.images ?? []).join(' | ') },
   { cle: 'stockRestant', titre: 'Stock restant' },
 ];
 
@@ -143,6 +144,7 @@ export function ListeProduits() {
               idCategorie: idParNom(r.categorie, categories, 'Catégorie'),
               prix: nombreCsv(r.prix),
               prixVenteAr: nombreCsv(r.prixVenteAr),
+              images: (r.images ?? '').split('|').map((u) => u.trim()).filter(Boolean),
             })}
             onImporte={recharger}
           />

@@ -459,9 +459,111 @@
 }
 @media (min-width: 768px) {
   .fiche-produit {
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 340px 1fr;
     align-items: start;
   }
+}
+
+/* Galerie de la fiche : photo principale + colonne de vignettes à droite */
+.galerie {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  gap: 10px;
+  align-items: start;
+}
+.galerie__vignettes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* Hauteur nulle + min-height 100 % : la colonne suit la photo principale sans l'agrandir */
+  align-self: stretch;
+  height: 0;
+  min-height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.galerie__vignette {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: var(--rayon-champ);
+  background: var(--peche-claire);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity var(--transition), border-color var(--transition);
+}
+.galerie__vignette img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.galerie__vignette:hover {
+  opacity: 1;
+}
+.galerie__vignette[aria-pressed='true'] {
+  border-color: var(--principale);
+  opacity: 1;
+}
+
+/* Formulaire produit : vignettes des photos supplémentaires */
+.photos-produit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.photos-produit__vignette,
+.photos-produit__ajout {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+  border-radius: var(--rayon-carte);
+}
+.photos-produit__vignette img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.photos-produit__actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+}
+.photos-produit__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(43, 35, 32, 0.6);
+  color: #fff;
+  cursor: pointer;
+}
+.photos-produit__actions button:hover {
+  background: var(--principale);
+}
+.photos-produit__ajout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--bordure-forte);
+  background: var(--fond-doux);
+  color: var(--texte-secondaire);
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+}
+.photos-produit__ajout:hover:not(:disabled) {
+  border-color: var(--principale);
+  color: var(--principale);
 }
 .definitions {
   display: grid;
@@ -1013,28 +1115,144 @@
   grid-template-columns: 1fr;
   align-items: stretch;
 }
-.accueil__surveiller {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-.accueil__surveiller .carte__corps {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  max-height: 60vh;
-}
 @media (min-width: 768px) {
   .accueil__grille {
     grid-template-columns: 1fr 1fr;
+    align-items: start;
   }
-  /* Hauteur nulle + min-height 100 % : la carte suit la hauteur de la rangée sans l'agrandir */
-  .accueil__surveiller {
-    height: 0;
-    min-height: 100%;
+}
+
+/* Récap des objectifs à venir : tuiles avec anneau de progression */
+.recap-objectifs {
+  display: grid;
+  gap: 12px;
+}
+.recap-objectif {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid var(--bordure);
+  border-radius: 12px;
+  background: var(--fond-doux);
+  color: inherit;
+  transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.recap-objectif:hover {
+  border-color: var(--peche);
+  box-shadow: var(--ombre);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.recap-objectif__anneau {
+  position: relative;
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+}
+.recap-objectif__anneau svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.recap-objectif__anneau circle {
+  fill: none;
+  stroke-width: 6;
+}
+.recap-objectif__piste {
+  stroke: var(--bordure);
+}
+.recap-objectif__arc {
+  stroke: var(--principale);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 600ms ease;
+}
+.recap-objectif__pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.recap-objectif__corps {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.recap-objectif__titre {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recap-objectif__valeur {
+  color: var(--texte-secondaire);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+.recap-objectif__dates {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--texte-discret);
+  font-size: 0.8rem;
+}
+.recap-objectif__echeance {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: var(--rayon-pilule);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.recap-objectif__echeance--neutre {
+  background: var(--info-fond);
+  color: var(--info);
+}
+.recap-objectif__echeance--proche {
+  background: var(--attention-fond);
+  color: var(--attention);
+}
+.recap-objectif__echeance--urgent {
+  background: var(--danger-fond);
+  color: var(--danger);
+}
+/* Au-delà du petit mobile : les objectifs côte à côte, en tuiles verticales centrées */
+@media (min-width: 480px) {
+  .recap-objectifs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .accueil__surveiller .carte__corps {
-    max-height: none;
+  .recap-objectif {
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 18px 12px 16px;
+    text-align: center;
+  }
+  .recap-objectif__anneau {
+    width: 72px;
+    height: 72px;
+  }
+  .recap-objectif__corps {
+    align-items: center;
+    width: 100%;
+  }
+  .recap-objectif__titre {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    min-height: 2.6em;
+    white-space: normal;
+    line-height: 1.3;
+  }
+  .recap-objectif__echeance {
+    align-self: center;
+    margin-top: 6px;
   }
 }
 

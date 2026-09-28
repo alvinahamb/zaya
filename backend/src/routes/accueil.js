@@ -1,11 +1,10 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { aujourdhui, ajouterJours, jour } from '../lib/dates.js';
-import { stockRestant, venteNette, arrondir } from '../lib/calculs.js';
+import { venteNette, arrondir } from '../lib/calculs.js';
 
 export const routeurAccueil = Router();
 
-const SEUIL_STOCK_BAS = 2;
 /** Les tâches du tableau de bord couvrent les deux prochaines semaines. */
 const HORIZON_JOURS = 14;
 
@@ -17,11 +16,12 @@ const joursEntre = (depuis, cible) =>
 
 /**
  * Tâches à venir et alertes. Il n'y a pas de table Tâche : tout est dérivé
- * des publications, des commandes, des livraisons, du stock et des objectifs
+ * des publications, des commandes, des livraisons et des objectifs
  * du mois. Chaque tâche porte `quand` (retard | jour | demain | avenir) et
  * `jours` (écart au jour courant) ; la liste est triée par échéance.
  * Les alertes reprennent les tâches en retard, du jour et de la veille
- * (rappel la veille), plus les alertes de stock.
+ * (rappel la veille). `objectifsProches` : les 3 objectifs en cours qui se
+ * terminent le plus tôt (puis qui commencent le plus tôt).
  */
 routeurAccueil.get('/', async (req, res) => {
   const ceJour = aujourdhui();
@@ -33,7 +33,7 @@ routeurAccueil.get('/', async (req, res) => {
   const finHorizon = new Date(`${horizon}T23:59:59.999`);
   const debutMois = new Date(`${ceJour.slice(0, 7)}-01`);
 
-  const [publications, achats, lignesStock, ventesMois, livraisons, objectifs] = await Promise.all([
+  const [publications, achats, ventesMois, livraisons, objectifs, objectifsProches] = await Promise.all([
     prisma.publication.findMany({
       where: {
         statut: { notIn: ['publiee', 'supprimee'] },
@@ -45,10 +45,6 @@ routeurAccueil.get('/', async (req, res) => {
     prisma.achat.findMany({
       where: { dateArrivee: null },
       orderBy: { dateArriveeEstimee: 'asc' },
-    }),
-    prisma.detailAchat.findMany({
-      where: { Achat: { dateFigement: { not: null } } },
-      include: { Produit: { select: { id: true, nom: true, image: true } }, DetailVente: { select: { quantite: true } } },
     }),
     prisma.vente.findMany({
       where: { dateVente: { gte: debutMois } },
@@ -62,6 +58,11 @@ routeurAccueil.get('/', async (req, res) => {
     prisma.monthlyAchievement.findMany({
       where: { userId: req.utilisateur.id, status: 'en_cours', endDate: { lte: finHorizon } },
       orderBy: { endDate: 'asc' },
+    }),
+    prisma.monthlyAchievement.findMany({
+      where: { userId: req.utilisateur.id, status: 'en_cours', endDate: { gte: new Date(ceJour) } },
+      orderBy: [{ endDate: 'asc' }, { startDate: 'asc' }],
+      take: 3,
     }),
   ]);
 
@@ -207,27 +208,7 @@ routeurAccueil.get('/', async (req, res) => {
       vente: { id: l.Vente.id, nom: l.Vente.nom, sommeAr: l.Vente.sommeAr },
     }));
 
-  // Stock par produit sur les commandes figées
-  const parProduit = new Map();
-  for (const l of lignesStock) {
-    const e = parProduit.get(l.idProduit) ?? { produit: l.Produit, achete: 0, restant: 0 };
-    e.achete += l.quantite;
-    e.restant += stockRestant(l);
-    parProduit.set(l.idProduit, e);
-  }
-  for (const { produit, achete, restant } of parProduit.values()) {
-    if (!achete) continue;
-    const base = { type: 'stock', module: 'Produits', lien: `/produits/${produit.id}`, cible: { idProduit: produit.id }, echeance: null, quand: null, jours: null, enRetard: false };
-    if (restant <= 0) {
-      const entree = { ...base, id: `rupture-${produit.id}`, libelle: `« ${produit.nom} » en rupture`, detail: 'Stock restant : 0' };
-      taches.push({ ...entree, cleTri: null });
-      notifications.push({ ...entree, niveau: 'danger' });
-    } else if (restant <= SEUIL_STOCK_BAS) {
-      notifications.push({ ...base, id: `stock-bas-${produit.id}`, libelle: `Stock bas pour « ${produit.nom} »`, detail: `Reste ${restant}`, niveau: 'attention' });
-    }
-  }
-
-  // Tri par échéance la plus proche ; les tâches sans échéance (ruptures) en fin de liste
+  // Tri par échéance la plus proche ; les tâches sans échéance en fin de liste
   taches.sort((a, b) => {
     if (a.cleTri === b.cleTri) return 0;
     if (a.cleTri === null) return 1;
@@ -248,6 +229,7 @@ routeurAccueil.get('/', async (req, res) => {
     taches,
     notifications,
     livraisonsDuJour,
+    objectifsProches,
     kpis: {
       caMoisAr: arrondir(caMois),
       nbVentesMois: ventesMois.length,

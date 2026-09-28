@@ -111,9 +111,22 @@ model Produit {
   prixVenteAr  Decimal?      @db.Decimal(14, 2)
   dateCreation DateTime      @default(now()) @db.Timestamp(6)
   DetailAchat  DetailAchat[]
+  ProduitImage ProduitImage[]
   Categorie    Categorie     @relation(fields: [idCategorie], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkProduitCategorie")
 
   @@index([idCategorie], map: "idxProduitCategorie")
+}
+
+/// Photos secondaires d'un produit (la principale reste dans Produit.image).
+model ProduitImage {
+  id           Int      @id @default(autoincrement())
+  idProduit    Int
+  url          String   @db.VarChar(255)
+  ordre        Int      @default(0)
+  dateCreation DateTime @default(now()) @db.Timestamp(6)
+  Produit      Produit  @relation(fields: [idProduit], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkProduitImageProduit")
+
+  @@index([idProduit, ordre], map: "idxProduitImageProduit")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

@@ -55,6 +55,13 @@ function enrichirAchat(achat, { complet = true } = {}) {
     fige: Boolean(achat.dateFigement),
     statut: statutAchat(achat, aujourdhui()),
     nbProduits: DetailAchat.length,
+    // Détail léger des lignes (export CSV de la liste des commandes)
+    articles: DetailAchat.map((l) => ({
+      produit: l.Produit.nom,
+      codeShein: l.Produit.codeShein,
+      quantite: l.quantite,
+      prix: l.prix,
+    })),
     nbPublications: publications.length,
     sommeEffective,
     taux,

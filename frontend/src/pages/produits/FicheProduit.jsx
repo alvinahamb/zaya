@@ -12,7 +12,8 @@ import { Tableau } from '../../components/ui/Tableau.jsx';
 import { BadgeStock, BadgeFigement } from '../../components/ui/Badge.jsx';
 import { Montant, Marge } from '../../components/ui/Montant.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
-import { Chargement, Encart, EtatVide, ImageProduit } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide } from '../../components/ui/Divers.jsx';
+import { GalerieProduit } from '../../components/ui/GalerieProduit.jsx';
 import { FormulaireProduit } from './FormulaireProduit.jsx';
 
 export function FicheProduit() {
@@ -74,7 +75,7 @@ export function FicheProduit() {
       }
     >
       <div className="fiche-produit espace-bas">
-        <ImageProduit src={produit.image} alt={produit.nom} taille="grande" />
+        <GalerieProduit key={[produit.image, ...(produit.images ?? [])].join('|')} image={produit.image} images={produit.images} alt={produit.nom} />
         <Carte titre="Informations">
           <dl className="definitions">
             <dt>Catégorie</dt>

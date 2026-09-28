@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { Upload, Plus, X, Star } from 'lucide-react';
 import { Produits, messageErreur } from '../../services/api.js';
 import { useFormulaire } from '../../lib/hooks.js';
 import { Modale } from '../../components/ui/Modale.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Champ, Saisie, SaisieMontant, Selection, ZoneTexte } from '../../components/ui/Champs.jsx';
 import { Encart, ImageProduit } from '../../components/ui/Divers.jsx';
+import { urlFichier } from '../../services/api.js';
+
+const MAX_IMAGES = 8;
 
 const vide = (categories) => ({
   nom: '',
@@ -15,6 +18,7 @@ const vide = (categories) => ({
   description: '',
   prix: '',
   image: '',
+  images: [],
 });
 
 const depuisProduit = (p) => ({
@@ -25,11 +29,13 @@ const depuisProduit = (p) => ({
   description: p.description ?? '',
   prix: p.prix ?? '',
   image: p.image ?? '',
+  images: p.images ?? [],
 });
 
 export function FormulaireProduit({ ouvert, produit, categories, onFermer, onEnregistre }) {
   const f = useFormulaire(vide(categories));
   const fichierRef = useRef(null);
+  const autresRef = useRef(null);
   const [televersement, setTeleversement] = useState(false);
   const [erreurImage, setErreurImage] = useState(null);
 
@@ -60,6 +66,36 @@ export function FormulaireProduit({ ouvert, produit, categories, onFermer, onEnr
       setTeleversement(false);
       e.target.value = '';
     }
+  };
+
+  // Photos supplémentaires : plusieurs fichiers d'un coup, envoyés un par un
+  const televerserAutres = async (e) => {
+    const fichiers = [...(e.target.files ?? [])];
+    e.target.value = '';
+    if (!fichiers.length) return;
+    const place = MAX_IMAGES - f.valeurs.images.length;
+    if (fichiers.length > place) setErreurImage(`${MAX_IMAGES} photos supplémentaires maximum`);
+    setTeleversement(true);
+    try {
+      const urls = [];
+      for (const fichier of fichiers.slice(0, place)) urls.push((await Produits.televerserImage(fichier)).url);
+      // Sans photo principale, la première téléversée le devient
+      if (!f.valeurs.image && urls.length) f.changer('image', urls.shift());
+      f.changer('images', [...f.valeurs.images, ...urls]);
+    } catch (err) {
+      setErreurImage(messageErreur(err));
+    } finally {
+      setTeleversement(false);
+    }
+  };
+
+  const retirerAutre = (url) => f.changer('images', f.valeurs.images.filter((u) => u !== url));
+
+  // Échange une photo supplémentaire avec la principale
+  const definirPrincipale = (url) => {
+    const autres = f.valeurs.images.filter((u) => u !== url);
+    f.changer('images', f.valeurs.image ? [f.valeurs.image, ...autres] : autres);
+    f.changer('image', url);
   };
 
   const soumettre = async (e) => {
@@ -121,6 +157,31 @@ export function FormulaireProduit({ ouvert, produit, categories, onFermer, onEnr
                   </Bouton>
                 </div>
               </div>
+            </div>
+          )}
+        </Champ>
+        <Champ libelle="Autres photos" aide={`Affichées à côté de la photo principale (${MAX_IMAGES} max)`}>
+          {(id) => (
+            <div className="photos-produit">
+              {f.valeurs.images.map((url) => (
+                <div key={url} className="photos-produit__vignette">
+                  <img src={urlFichier(url)} alt="" loading="lazy" />
+                  <div className="photos-produit__actions">
+                    <button type="button" onClick={() => definirPrincipale(url)} aria-label="Définir comme photo principale" title="Définir comme principale">
+                      <Star size={14} aria-hidden="true" />
+                    </button>
+                    <button type="button" onClick={() => retirerAutre(url)} aria-label="Retirer cette photo" title="Retirer">
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {f.valeurs.images.length < MAX_IMAGES && (
+                <button id={id} type="button" className="photos-produit__ajout" onClick={() => autresRef.current?.click()} disabled={televersement} aria-label="Ajouter des photos">
+                  {televersement ? <span className="chargement__rond" style={{ width: 18, height: 18, borderWidth: 2 }} /> : <Plus size={20} aria-hidden="true" />}
+                </button>
+              )}
+              <input ref={autresRef} type="file" accept="image/*" multiple onChange={televerserAutres} className="sr-only" aria-label="Téléverser des photos supplémentaires" />
             </div>
           )}
         </Champ>

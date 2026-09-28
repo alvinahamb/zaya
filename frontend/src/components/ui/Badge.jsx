@@ -42,11 +42,10 @@ export function BadgeStatutPublication({ statut }) {
   );
 }
 
-export function BadgeStock({ restant, seuil = 2 }) {
+/** Quantité en stock, sans alerte (ni rupture ni stock bas). */
+export function BadgeStock({ restant }) {
   if (restant === null || restant === undefined) return <Badge>—</Badge>;
-  if (restant <= 0) return <Badge ton="danger" icone={AlertTriangle}>Rupture</Badge>;
-  if (restant <= seuil) return <Badge ton="attention">Stock bas : {nombre(restant)}</Badge>;
-  return <Badge ton="succes">{nombre(restant)} en stock</Badge>;
+  return <Badge>{nombre(restant)} en stock</Badge>;
 }
 
 export function BadgeFigement({ fige }) {

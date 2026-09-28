@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Bell } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { Accueil as ApiAccueil, Achats, Publications, Livraisons, messageErreur } from '../services/api.js';
@@ -10,6 +10,7 @@ import { Page } from '../components/layout/Page.jsx';
 import { Carte, Indicateur } from '../components/ui/Carte.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
 import { Chargement, Encart, EtatVide } from '../components/ui/Divers.jsx';
+import { RecapObjectifs } from './RecapObjectifs.jsx';
 
 const STATUT_SUIVANT = { a_faire: 'creee', creee: 'publiee' };
 
@@ -35,7 +36,6 @@ async function accomplir(tache) {
 }
 
 const NON_COCHABLE = {
-  stock: 'À traiter depuis la fiche produit',
   objectif: 'À mettre à jour depuis la page Objectifs',
 };
 
@@ -139,10 +139,8 @@ export function Accueil() {
       ].filter(Boolean).join(' · ')
     : 'Rien de prévu';
   const taches = donnees?.taches ?? [];
-  const idsTaches = new Set(taches.map((t) => t.id));
-  const aSurveiller = (donnees?.notifications ?? []).filter((n) => !idsTaches.has(n.id));
-  // Du jour : en retard, aujourd'hui, ou sans échéance (ruptures) ; le reste est à venir sur l'horizon
-  const tachesDuJour = taches.filter((t) => t.quand === 'retard' || t.quand === 'jour' || !t.quand);
+  // Du jour : en retard ou aujourd'hui ; le reste est à venir sur l'horizon
+  const tachesDuJour = taches.filter((t) => t.quand === 'retard' || t.quand === 'jour');
   const enRetard = taches.filter((t) => t.enRetard).length;
   const aVenir = taches.length - tachesDuJour.length;
   const horizon = donnees?.horizonJours ?? 14;
@@ -176,7 +174,7 @@ export function Accueil() {
             <div className="accueil__grille">
               <Carte titre={`Tâches du jour et des ${horizon} prochains jours`} nu>
                 {taches.length === 0 ? (
-                  <EtatVide icone={CheckCircle2} titre={`Rien à faire sur ${horizon} jours`} description="Les publications, réceptions, livraisons, ruptures et objectifs apparaîtront ici, du plus proche au plus lointain." />
+                  <EtatVide icone={CheckCircle2} titre={`Rien à faire sur ${horizon} jours`} description="Les publications, réceptions, livraisons et objectifs apparaîtront ici, du plus proche au plus lointain." />
                 ) : (
                   groupes.map((g) => (
                     <div key={g.libelle}>
@@ -187,25 +185,7 @@ export function Accueil() {
                 )}
               </Carte>
 
-              <Carte titre="À surveiller" nu className="accueil__surveiller">
-                {aSurveiller.length === 0 ? (
-                  <EtatVide icone={Bell} titre="Rien à signaler" />
-                ) : (
-                  <div className="liste-elements">
-                    {aSurveiller.map((n) => (
-                      <Link key={n.id} to={n.lien} className="element" style={{ color: 'inherit' }}>
-                        <span className={`notification__point notification__point--${n.niveau}`} style={{ marginTop: 0 }} aria-hidden="true" />
-                        <span className="element__corps">
-                          <span className="element__titre">{n.libelle}</span>
-                          <span className="element__meta" style={{ display: 'block' }}>
-                            {[n.module, n.detail].filter(Boolean).join(' · ')}
-                          </span>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </Carte>
+              <RecapObjectifs objectifs={donnees.objectifsProches ?? []} />
             </div>
           </>
         )

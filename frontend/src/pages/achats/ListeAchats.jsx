@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Plus, ShoppingBag } from 'lucide-react';
-import { Achats } from '../../services/api.js';
+import { Achats, Produits } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { dateCourte, versInputDate, euro, ariary, LIBELLES_STATUT_ACHAT } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
@@ -13,24 +13,57 @@ import { Montant, Marge } from '../../components/ui/Montant.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
 import { Chargement, Encart, EtatVide, BoutonsCsv } from '../../components/ui/Divers.jsx';
-import { nombreCsv, dateCsv } from '../../lib/csv.js';
+import { nombreCsv, dateCsv, idParNom, normaliser } from '../../lib/csv.js';
 import { FormulaireAchat } from './FormulaireAchat.jsx';
 
-// Import : crée l'en-tête de la commande ; les produits se tarifent ensuite dans la fiche
+/*
+ * CSV des commandes : une ligne par article, les colonnes de la commande étant
+ * répétées sur chacune (une commande sans article tient sur une seule ligne).
+ * À l'import, les lignes consécutives de même nom et même date forment une
+ * commande ; le produit est retrouvé par son code Shein, sinon par son nom.
+ */
 const COLONNES_CSV = [
-  { cle: 'nom', titre: 'Nom' },
+  { cle: 'nom', titre: 'Commande' },
   { cle: 'description', titre: 'Description' },
-  { cle: 'dateCommande', titre: 'Commandée le', valeur: (a) => versInputDate(a.dateCommande) },
-  { cle: 'dateArriveeEstimee', titre: 'Arrivée estimée', valeur: (a) => versInputDate(a.dateArriveeEstimee) },
-  { cle: 'dateArrivee', titre: 'Arrivée réelle', valeur: (a) => versInputDate(a.dateArrivee) },
-  { cle: 'sommeTotale', titre: 'Total (€)', valeur: (a) => a.sommeEffective },
+  { cle: 'dateCommande', titre: 'Commandée le', valeur: (r) => versInputDate(r.dateCommande) },
+  { cle: 'dateArriveeEstimee', titre: 'Arrivée estimée', valeur: (r) => versInputDate(r.dateArriveeEstimee) },
+  { cle: 'dateArrivee', titre: 'Arrivée réelle', valeur: (r) => versInputDate(r.dateArrivee) },
+  { cle: 'sommeTotale', titre: 'Total commande (€)', valeur: (r) => r.sommeEffective },
   { cle: 'sommeAr', titre: 'Payé (Ar)' },
-  { cle: 'statut', titre: 'Statut', valeur: (a) => LIBELLES_STATUT_ACHAT[a.statut] },
-  { cle: 'nbProduits', titre: 'Produits' },
+  { cle: 'statut', titre: 'Statut', valeur: (r) => LIBELLES_STATUT_ACHAT[r.statut] },
+  { cle: 'produit', titre: 'Produit', valeur: (r) => r.article?.produit },
+  { cle: 'codeShein', titre: 'Code Shein', valeur: (r) => r.article?.codeShein },
+  { cle: 'quantite', titre: 'Quantité', valeur: (r) => r.article?.quantite },
+  { cle: 'prix', titre: 'Prix unitaire (€)', valeur: (r) => r.article?.prix },
 ];
 
-const importerAchat = (r) =>
-  Achats.creer({
+/** Commandes → lignes CSV (une par article). */
+const lignesCsv = (achats) =>
+  achats.flatMap((a) => (a.articles?.length ? a.articles.map((article) => ({ ...a, article })) : [{ ...a, article: null }]));
+
+/** Lignes consécutives d'une même commande (nom + date de commande) → un groupe. */
+function regrouperCommandes(lignes) {
+  const groupes = [];
+  for (const l of lignes) {
+    const cle = `${normaliser(l.nom)}|${dateCsv(l.dateCommande) ?? ''}`;
+    const dernier = groupes[groupes.length - 1];
+    if (dernier && dernier.cle === cle) dernier.lignes.push(l);
+    else groupes.push({ cle, lignes: [l] });
+  }
+  return groupes.map((g) => g.lignes);
+}
+
+function idProduitCsv(ligne, produits) {
+  if (ligne.codeShein) {
+    const parCode = produits.find((p) => normaliser(p.codeShein) === normaliser(ligne.codeShein));
+    if (parCode) return parCode.id;
+  }
+  return idParNom(ligne.produit || ligne.codeShein, produits, 'Produit');
+}
+
+const importerAchat = (groupe, produits) => {
+  const [r] = groupe;
+  return Achats.creer({
     nom: r.nom,
     description: r.description,
     dateCommande: dateCsv(r.dateCommande),
@@ -38,7 +71,11 @@ const importerAchat = (r) =>
     dateArrivee: dateCsv(r.dateArrivee),
     sommeTotale: nombreCsv(r.sommeTotale),
     sommeAr: nombreCsv(r.sommeAr),
+    lignes: groupe
+      .filter((l) => l.produit || l.codeShein)
+      .map((l) => ({ idProduit: idProduitCsv(l, produits), quantite: nombreCsv(l.quantite), prix: nombreCsv(l.prix) })),
   });
+};
 
 /** Carte mobile d'une commande : titre, dates, statut, puis trois chiffres clés. */
 function CarteAchat({ achat: a }) {
@@ -87,6 +124,9 @@ export function ListeAchats() {
   const mobile = useMediaQuery(REQUETE_MOBILE);
   const charger = useCallback(() => Achats.lister(), []);
   const { donnees, chargement, erreur, recharger } = useApi(charger);
+  // Catalogue : pour retrouver les produits des articles importés
+  const chargerProduits = useCallback(() => Produits.lister(), []);
+  const { donnees: produits } = useApi(chargerProduits);
   const [recherche, setRecherche] = useState('');
   const [statut, setStatut] = useState('');
 
@@ -152,7 +192,14 @@ export function ListeAchats() {
           aria-label="Filtrer par statut"
         />
         <div className="pousser">
-          <BoutonsCsv nomFichier="achats" colonnes={COLONNES_CSV} lignes={filtres} importer={importerAchat} onImporte={recharger} />
+          <BoutonsCsv
+            nomFichier="achats"
+            colonnes={COLONNES_CSV}
+            lignes={lignesCsv(filtres)}
+            regrouper={regrouperCommandes}
+            importer={(groupe) => importerAchat(groupe, produits ?? [])}
+            onImporte={recharger}
+          />
         </div>
       </div>
 

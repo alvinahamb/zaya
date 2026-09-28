@@ -125,8 +125,10 @@ export function ElementMenu({ icone: Icone, to, onClick, children, style }) {
  * Export / import CSV d'une liste : deux icônes discrètes.
  * `importer(enregistrement)` crée un élément à partir d'une ligne ({ cle: texte }) ;
  * sans `importer`, seule l'icône d'export s'affiche.
+ * `regrouper(enregistrements)` : réunit plusieurs lignes du fichier en un seul
+ * élément (ex. une commande et ses articles) ; `importer` reçoit alors le groupe.
  */
-export function BoutonsCsv({ nomFichier, colonnes, lignes, importer, onImporte }) {
+export function BoutonsCsv({ nomFichier, colonnes, lignes, importer, regrouper, onImporte }) {
   const { notifier } = useToast();
   const champ = useRef(null);
   const [enCours, setEnCours] = useState(false);
@@ -148,7 +150,9 @@ export function BoutonsCsv({ nomFichier, colonnes, lignes, importer, onImporte }
     if (!fichier) return;
     setEnCours(true);
     try {
-      const liste = enregistrements(colonnes, lireCsv(await fichier.text()));
+      // Numéro de ligne dans le fichier (en-tête = ligne 1), pour les messages d'erreur
+      const lus = enregistrements(colonnes, lireCsv(await fichier.text())).map((r, i) => ({ ...r, __ligne: i + 2 }));
+      const liste = regrouper ? regrouper(lus) : lus;
       if (liste.length === 0) {
         notifier('Aucune ligne à importer', 'erreur');
         return;
@@ -156,16 +160,18 @@ export function BoutonsCsv({ nomFichier, colonnes, lignes, importer, onImporte }
       let reussis = 0;
       const erreurs = [];
       // Séquentiel : garde l'ordre du fichier et évite de saturer l'API
-      for (const [i, enregistrement] of liste.entries()) {
+      for (const element of liste) {
         try {
-          await importer(enregistrement);
+          await importer(element);
           reussis++;
         } catch (err) {
-          erreurs.push(`ligne ${i + 2} : ${err?.response?.data?.message ?? err?.message ?? 'erreur'}`);
+          const ligne = (Array.isArray(element) ? element[0] : element).__ligne;
+          erreurs.push(`ligne ${ligne} : ${err?.response?.data?.message ?? err?.message ?? 'erreur'}`);
         }
       }
       if (reussis) onImporte?.();
-      if (erreurs.length === 0) notifier(`${reussis} ligne${reussis > 1 ? 's' : ''} importée${reussis > 1 ? 's' : ''}`);
+      const quoi = regrouper ? 'élément' : 'ligne';
+      if (erreurs.length === 0) notifier(`${reussis} ${quoi}${reussis > 1 ? 's' : ''} importé${quoi === 'ligne' ? 'e' : ''}${reussis > 1 ? 's' : ''}`);
       else notifier(`${reussis} importée${reussis > 1 ? 's' : ''}, ${erreurs.length} en erreur (${erreurs[0]}${erreurs.length > 1 ? '…' : ''})`, 'erreur');
     } catch {
       notifier('Fichier CSV illisible', 'erreur');

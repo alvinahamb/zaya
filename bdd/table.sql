@@ -35,6 +35,7 @@ DROP TABLE IF EXISTS "ClientReseau" CASCADE;
 DROP TABLE IF EXISTS "Client"       CASCADE;
 DROP TABLE IF EXISTS "DetailAchat"  CASCADE;
 DROP TABLE IF EXISTS "Achat"        CASCADE;
+DROP TABLE IF EXISTS "ProduitImage" CASCADE;
 DROP TABLE IF EXISTS "Produit"      CASCADE;
 DROP TABLE IF EXISTS "Reseau"       CASCADE;
 DROP TABLE IF EXISTS "Categorie"    CASCADE;
@@ -89,6 +90,19 @@ CREATE TABLE "Produit" (
     CONSTRAINT "fkProduitCategorie"
         FOREIGN KEY ("idCategorie") REFERENCES "Categorie" ("id")
 );
+
+-- Photos secondaires (la principale reste dans "Produit"."image")
+CREATE TABLE "ProduitImage" (
+    "id"            SERIAL        PRIMARY KEY,
+    "idProduit"     INT           NOT NULL,
+    "url"           VARCHAR(255)  NOT NULL,
+    "ordre"         INT           NOT NULL DEFAULT 0,
+    "dateCreation"  TIMESTAMP     NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT "fkProduitImageProduit"
+        FOREIGN KEY ("idProduit") REFERENCES "Produit" ("id") ON DELETE CASCADE
+);
+CREATE INDEX "idxProduitImageProduit" ON "ProduitImage" ("idProduit", "ordre");
 
 
 -- =====================================================================

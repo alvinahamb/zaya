@@ -40,8 +40,11 @@ const televersement = multer({
   },
 });
 
+const MAX_IMAGES = 8;
+
 const inclusionProduit = {
   Categorie: true,
+  ProduitImage: { orderBy: [{ ordre: 'asc' }, { id: 'asc' }] },
   DetailAchat: {
     include: {
       Achat: { select: { id: true, nom: true, dateFigement: true, dateCommande: true } },
@@ -53,7 +56,7 @@ const inclusionProduit = {
 
 /** Ajoute le stock restant (Σ lignes de commande − Σ ventes) et aplatit les relations. */
 function enrichirProduit(produit) {
-  const { DetailAchat, Categorie, ...reste } = produit;
+  const { DetailAchat, Categorie, ProduitImage, ...reste } = produit;
   const lignes = DetailAchat.map((l) => ({
     id: l.id,
     quantite: l.quantite,
@@ -66,6 +69,8 @@ function enrichirProduit(produit) {
   return {
     ...reste,
     categorie: Categorie,
+    // Photos secondaires, affichées à côté de la principale (Produit.image)
+    images: (ProduitImage ?? []).map((i) => i.url),
     stockRestant: lignes.reduce((s, l) => s + l.stockRestant, 0),
     quantiteAchetee: lignes.reduce((s, l) => s + l.quantite, 0),
     lignes,
@@ -88,6 +93,19 @@ function lireCorps(corps = {}) {
     prix: nombre(corps.prix, { min: 0, nom: "Prix d'achat" }),
     prixVenteAr: nombre(corps.prixVenteAr, { min: 0, nom: 'Prix de vente' }),
   };
+}
+
+/**
+ * Photos secondaires : liste d'URL dans l'ordre d'affichage, ou `undefined`
+ * si le corps n'en parle pas (les photos existantes sont alors conservées).
+ */
+function lireImages(corps = {}) {
+  if (corps.images === undefined) return undefined;
+  exiger(Array.isArray(corps.images), 'Images : liste attendue');
+  const urls = [...new Set(corps.images.map((u) => String(u ?? '').trim()).filter(Boolean))];
+  exiger(urls.length <= MAX_IMAGES, `${MAX_IMAGES} photos supplémentaires maximum`);
+  exiger(urls.every((u) => u.length <= 255), "Adresse d'image trop longue");
+  return urls.map((url, ordre) => ({ url, ordre }));
 }
 
 routeurProduits.get('/', async (req, res) => {
@@ -131,17 +149,20 @@ routeurProduits.get('/:id', async (req, res) => {
 });
 
 routeurProduits.post('/', async (req, res) => {
+  const images = lireImages(req.body);
   const produit = await prisma.produit.create({
-    data: lireCorps(req.body),
+    data: { ...lireCorps(req.body), ...(images ? { ProduitImage: { create: images } } : {}) },
     include: inclusionProduit,
   });
   res.status(201).json(enrichirProduit(produit));
 });
 
 routeurProduits.put('/:id', async (req, res) => {
+  const images = lireImages(req.body);
+  // Liste envoyée = liste complète : on remplace les photos secondaires
   const produit = await prisma.produit.update({
     where: { id: entierId(req.params.id) },
-    data: lireCorps(req.body),
+    data: { ...lireCorps(req.body), ...(images ? { ProduitImage: { deleteMany: {}, create: images } } : {}) },
     include: inclusionProduit,
   });
   res.json(enrichirProduit(produit));
