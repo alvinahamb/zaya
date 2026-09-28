@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import { Search, Plus, Bell, Settings, LogOut, ShoppingBag, Receipt, Package, Megaphone, Inbox } from 'lucide-react';
+import { Search, Plus, Bell, BellRing, Settings, LogOut, ShoppingBag, Receipt, Package, Megaphone, Inbox, Target } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { Accueil } from '../../services/api.js';
 import { Bouton } from '../ui/Bouton.jsx';
 import { MenuDeroulant, ElementMenu } from '../ui/Divers.jsx';
 import { Recherche } from './Recherche.jsx';
 import { Logo } from './Logo.jsx';
-import { dateCourte } from '../../lib/format.js';
+import { dateCourte, aujourdhuiISO, LIBELLES_QUAND } from '../../lib/format.js';
 
 const RUBRIQUES = [
   { to: '/', libelle: 'Accueil', exact: true },
@@ -15,6 +15,7 @@ const RUBRIQUES = [
   { to: '/produits', libelle: 'Produits' },
   { to: '/ventes', libelle: 'Ventes' },
   { to: '/publications', libelle: 'Publications' },
+  { to: '/objectifs', libelle: 'Objectifs' },
   { to: '/statistiques', libelle: 'Statistiques' },
 ];
 
@@ -23,6 +24,7 @@ const NOUVEAUX = [
   { to: '/ventes/nouvelle', libelle: 'Nouvelle vente', icone: Receipt },
   { to: '/produits?nouveau=1', libelle: 'Nouveau produit', icone: Package },
   { to: '/publications?nouveau=1', libelle: 'Nouvelle publication', icone: Megaphone },
+  { to: '/objectifs?nouveau=1', libelle: 'Nouvel objectif', icone: Target },
 ];
 
 function initiales(utilisateur) {
@@ -35,13 +37,59 @@ function initiales(utilisateur) {
     .join('');
 }
 
-/** Alertes dérivées des données (stock, retards, publications), rafraîchies à chaque navigation. */
+const CLE_SIGNALEES = 'zaya.notifications.signalees';
+
+const permissionNavigateur = () => (typeof Notification === 'undefined' ? 'indisponible' : Notification.permission);
+
+/**
+ * Rappels du navigateur : une notification système par tâche à faire demain
+ * ou aujourd'hui, une seule fois par jour et par tâche (mémorisé localement).
+ */
+function signalerNavigateur(notifications) {
+  if (permissionNavigateur() !== 'granted') return;
+  const ceJour = aujourdhuiISO();
+  let signalees = {};
+  try {
+    signalees = JSON.parse(localStorage.getItem(CLE_SIGNALEES) || '{}');
+  } catch {
+    signalees = {};
+  }
+  const nouvelles = notifications.filter((n) => (n.quand === 'demain' || n.quand === 'jour') && signalees[n.id] !== ceJour);
+  for (const n of nouvelles.slice(0, 5)) {
+    try {
+      const notification = new Notification(`${LIBELLES_QUAND[n.quand]} : ${n.libelle}`, {
+        body: [n.module, n.detail, n.echeance ? dateCourte(n.echeance) : null].filter(Boolean).join(' · '),
+        tag: n.id,
+      });
+      notification.onclick = () => {
+        window.focus();
+        window.location.assign(n.lien);
+      };
+    } catch {
+      /* navigateur sans notifications système */
+    }
+    signalees[n.id] = ceJour;
+  }
+  // On ne garde que les rappels du jour
+  const propre = Object.fromEntries(Object.entries(signalees).filter(([, j]) => j === ceJour));
+  try {
+    localStorage.setItem(CLE_SIGNALEES, JSON.stringify(propre));
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
+/** Alertes dérivées des données (stock, retards, publications, objectifs), rafraîchies à chaque navigation. */
 function useNotifications() {
   const [notifications, setNotifications] = useState([]);
   const { pathname } = useLocation();
   const charger = useCallback(() => {
     Accueil.lire()
-      .then((r) => setNotifications(r.notifications ?? []))
+      .then((r) => {
+        const liste = r.notifications ?? [];
+        setNotifications(liste);
+        signalerNavigateur(liste);
+      })
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -62,6 +110,15 @@ export function BarreHaut() {
   const { utilisateur, deconnecter } = useAuth();
   const [rechercheOuverte, setRechercheOuverte] = useState(false);
   const notifications = useNotifications();
+  const [permission, setPermission] = useState(permissionNavigateur);
+
+  const activerRappels = async () => {
+    try {
+      setPermission(await Notification.requestPermission());
+    } catch {
+      setPermission(permissionNavigateur());
+    }
+  };
 
   useEffect(() => {
     const surTouche = (e) => {
@@ -120,11 +177,17 @@ export function BarreHaut() {
                       <span style={{ minWidth: 0 }}>
                         <span style={{ display: 'block' }}>{n.libelle}</span>
                         <span className="tres-petit secondaire" style={{ display: 'block' }}>
-                          {[n.module, n.detail, n.echeance && !n.detail ? dateCourte(n.echeance) : null].filter(Boolean).join(' · ')}
+                          {[LIBELLES_QUAND[n.quand], n.module, n.detail, n.echeance && !n.detail ? dateCourte(n.echeance) : null].filter(Boolean).join(' · ')}
                         </span>
                       </span>
                     </Link>
                   ))}
+                  {permission === 'default' && (
+                    <>
+                      <div className="menu-deroulant__separateur" />
+                      <ElementMenu onClick={activerRappels} icone={BellRing}>Activer les rappels du navigateur</ElementMenu>
+                    </>
+                  )}
                 </div>
               </MenuDeroulant>
 

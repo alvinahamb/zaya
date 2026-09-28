@@ -14,6 +14,7 @@ import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Chargement, Encart, EtatVide, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
+import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
 import { FormulaireBoost } from './FormulaireBoost.jsx';
 import { FormulaireFrais } from '../achats/OngletFrais.jsx';
 
@@ -204,7 +205,7 @@ export function FichePublication() {
       sousTitre={
         <div className="flex" style={{ flexWrap: 'wrap', gap: '4px 12px' }}>
           <span>{dateHeure(p.dateHeurePublication)}</span>
-          {p.reseaux.map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
+          <ReseauxPublication publication={p} />
           {p.achat && <span>Commande <Link to={`/achats/${p.achat.id}`}>{p.achat.nom}</Link></span>}
         </div>
       }

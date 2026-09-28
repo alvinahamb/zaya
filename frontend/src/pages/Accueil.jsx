@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { useToast } from '../contexts/ToastContext.jsx';
 import { Accueil as ApiAccueil, Achats, Publications, Livraisons, messageErreur } from '../services/api.js';
 import { useApi } from '../lib/hooks.js';
-import { ariary, nombre, dateLongue, dateCourte, versInputDate, aujourdhuiISO, SUIVANT_LIVRAISON } from '../lib/format.js';
+import { ariary, nombre, dateLongue, dateCourte, dateMoyenne, versInputDate, aujourdhuiISO, pluriel, SUIVANT_LIVRAISON } from '../lib/format.js';
 import { Page } from '../components/layout/Page.jsx';
 import { Carte, Indicateur } from '../components/ui/Carte.jsx';
 import { Badge } from '../components/ui/Badge.jsx';
@@ -34,8 +34,44 @@ async function accomplir(tache) {
   }
 }
 
+const NON_COCHABLE = {
+  stock: 'À traiter depuis la fiche produit',
+  objectif: 'À mettre à jour depuis la page Objectifs',
+};
+
+/** Libellé de l'échéance d'une tâche selon sa position dans le temps. */
+function libelleEcheance(tache) {
+  if (!tache.echeance) return null;
+  const date = dateCourte(tache.echeance);
+  if (tache.quand === 'retard') return `En retard · ${date}`;
+  if (tache.quand === 'jour') return `Aujourd'hui · ${date}`;
+  if (tache.quand === 'demain') return `Demain · ${date}`;
+  if (tache.jours !== null && tache.jours !== undefined) return `Dans ${pluriel(tache.jours, 'jour')} · ${date}`;
+  return `Échéance : ${date}`;
+}
+
+/** Titre du groupe de tâches : en retard, aujourd'hui, demain, puis une ligne par jour. */
+function libelleGroupe(tache) {
+  if (tache.quand === 'retard') return 'En retard';
+  if (tache.quand === 'jour') return "Aujourd'hui";
+  if (tache.quand === 'demain') return 'Demain';
+  if (tache.echeance) return dateMoyenne(tache.echeance);
+  return 'Sans échéance';
+}
+
+function grouper(taches) {
+  const groupes = [];
+  for (const t of taches) {
+    const libelle = libelleGroupe(t);
+    const dernier = groupes[groupes.length - 1];
+    if (dernier && dernier.libelle === libelle) dernier.taches.push(t);
+    else groupes.push({ libelle, taches: [t] });
+  }
+  return groupes;
+}
+
 function Tache({ tache, faite, onCocher }) {
-  const cochable = tache.type !== 'stock';
+  const cochable = !(tache.type in NON_COCHABLE);
   return (
     <div className={`tache ${faite ? 'tache--faite' : ''}`}>
       <input
@@ -45,7 +81,7 @@ function Tache({ tache, faite, onCocher }) {
         disabled={!cochable || faite}
         onChange={() => onCocher(tache)}
         aria-label={cochable ? `Marquer comme faite : ${tache.libelle}` : tache.libelle}
-        title={cochable ? undefined : 'À traiter depuis la fiche produit'}
+        title={cochable ? undefined : NON_COCHABLE[tache.type]}
       />
       <div className="tache__corps">
         <div className="tache__libelle">
@@ -55,9 +91,11 @@ function Tache({ tache, faite, onCocher }) {
           <Badge>{tache.module}</Badge>
           {tache.detail && <span>{tache.detail}</span>}
           {tache.echeance && (
-            <span className={tache.enRetard ? 'gras' : ''} style={tache.enRetard ? { color: 'var(--danger)' } : undefined}>
-              {tache.enRetard ? 'En retard · ' : 'Échéance : '}
-              {dateCourte(tache.echeance)}
+            <span
+              className={tache.enRetard || tache.quand === 'jour' ? 'gras' : ''}
+              style={tache.enRetard ? { color: 'var(--danger)' } : tache.quand === 'jour' || tache.quand === 'demain' ? { color: 'var(--attention)' } : undefined}
+            >
+              {libelleEcheance(tache)}
             </span>
           )}
         </div>
@@ -103,6 +141,12 @@ export function Accueil() {
   const taches = donnees?.taches ?? [];
   const idsTaches = new Set(taches.map((t) => t.id));
   const aSurveiller = (donnees?.notifications ?? []).filter((n) => !idsTaches.has(n.id));
+  // Du jour : en retard, aujourd'hui, ou sans échéance (ruptures) ; le reste est à venir sur l'horizon
+  const tachesDuJour = taches.filter((t) => t.quand === 'retard' || t.quand === 'jour' || !t.quand);
+  const enRetard = taches.filter((t) => t.enRetard).length;
+  const aVenir = taches.length - tachesDuJour.length;
+  const horizon = donnees?.horizonJours ?? 14;
+  const groupes = grouper(taches);
 
   return (
     <Page titre={`Bonjour ${prenom}`} sousTitre={dateLongue(donnees?.date || new Date().toISOString())}>
@@ -121,15 +165,25 @@ export function Accueil() {
                 couleur={livraisonsJour.some((l) => l.enRetard) ? 'var(--danger)' : livraisonsJour.length ? 'var(--principale)' : undefined}
                 sous={resumeLivraisons}
               />
-              <Indicateur libelle="Tâches du jour" valeur={nombre(taches.length)} sous={taches.filter((t) => t.enRetard).length ? `${taches.filter((t) => t.enRetard).length} en retard` : 'À jour'} />
+              <Indicateur
+                libelle="Tâches du jour"
+                valeur={nombre(tachesDuJour.length)}
+                couleur={enRetard ? 'var(--danger)' : undefined}
+                sous={enRetard ? `${enRetard} en retard` : aVenir ? `${aVenir} à venir sur ${horizon} jours` : 'À jour'}
+              />
             </div>
 
             <div className="accueil__grille">
-              <Carte titre="Tâches du jour" nu>
+              <Carte titre={`Tâches du jour et des ${horizon} prochains jours`} nu>
                 {taches.length === 0 ? (
-                  <EtatVide icone={CheckCircle2} titre="Rien à faire aujourd'hui" description="Les publications, réceptions et ruptures apparaîtront ici." />
+                  <EtatVide icone={CheckCircle2} titre={`Rien à faire sur ${horizon} jours`} description="Les publications, réceptions, livraisons, ruptures et objectifs apparaîtront ici, du plus proche au plus lointain." />
                 ) : (
-                  taches.map((t) => <Tache key={t.id} tache={t} faite={faites.has(t.id)} onCocher={cocher} />)
+                  groupes.map((g) => (
+                    <div key={g.libelle}>
+                      <div className="tache-groupe">{g.libelle}</div>
+                      {g.taches.map((t) => <Tache key={t.id} tache={t} faite={faites.has(t.id)} onCocher={cocher} />)}
+                    </div>
+                  ))
                 )}
               </Carte>
 

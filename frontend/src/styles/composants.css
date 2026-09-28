@@ -312,6 +312,27 @@
   font-weight: 500;
 }
 
+/* Heure de publication propre à chaque réseau coché */
+.dates-reseaux {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dates-reseaux__ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dates-reseaux__nom {
+  min-width: 110px;
+  font-weight: 500;
+}
+.dates-reseaux__ligne .saisie {
+  flex: 1;
+  min-width: 200px;
+}
+
 .formulaire {
   display: flex;
   flex-direction: column;
