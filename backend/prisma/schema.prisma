@@ -112,6 +112,7 @@ model Produit {
   dateCreation DateTime      @default(now()) @db.Timestamp(6)
   DetailAchat  DetailAchat[]
   ProduitImage ProduitImage[]
+  PublicationProduit PublicationProduit[]
   Categorie    Categorie     @relation(fields: [idCategorie], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fkProduitCategorie")
 
   @@index([idCategorie], map: "idxProduitCategorie")
@@ -135,6 +136,8 @@ model Publication {
   nom                  String              @db.VarChar(150)
   description          String?
   statut               String              @default("a_faire") @db.VarChar(20)
+  /// Type de contenu (publication, story) ; valeurs contrôlées par l'API
+  type                 String              @default("publication") @db.VarChar(20)
   dateHeurePublication DateTime?           @db.Timestamp(6)
   lienPinterest        String?             @db.VarChar(255)
   lienContenu          String?             @db.VarChar(255)
@@ -143,9 +146,11 @@ model Publication {
   Boost                Boost[]
   Achat                Achat?              @relation(fields: [idAchat], references: [id], onUpdate: NoAction, map: "fkPublicationAchat")
   PublicationReseau    PublicationReseau[]
+  PublicationProduit   PublicationProduit[]
 
   @@index([idAchat], map: "idxPublicationAchat")
   @@index([dateHeurePublication], map: "idxPublicationDate")
+  @@index([type], map: "idxPublicationType")
 }
 
 model Reseau {
@@ -168,6 +173,17 @@ model Utilisateur {
   actif        Boolean  @default(true)
   dateCreation DateTime @default(now()) @db.Timestamp(6)
   MonthlyAchievement MonthlyAchievement[]
+  NotificationVue    NotificationVue[]
+}
+
+/// Notifications marquées vues par un utilisateur (clé : « id|échéance relative »).
+model NotificationVue {
+  idUtilisateur Int
+  cle           String      @db.VarChar(200)
+  dateVue       DateTime    @default(now()) @db.Timestamp(6)
+  Utilisateur   Utilisateur @relation(fields: [idUtilisateur], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkNotificationVueUtilisateur")
+
+  @@id([idUtilisateur, cle], map: "pkNotificationVue")
 }
 
 /// Objectifs du mois (table `monthly_achievements`, créée par backend/prisma/sql/2026-09-22_monthly_achievements.sql).
@@ -222,6 +238,17 @@ model Budget {
   Achat        Achat     @relation(fields: [idAchat], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkBudgetAchat")
 
   @@index([idAchat], map: "idxBudgetAchat")
+}
+
+/// Bijoux présentés dans une publication (pris dans la commande liée).
+model PublicationProduit {
+  idPublication Int
+  idProduit     Int
+  Publication   Publication @relation(fields: [idPublication], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkPublicationProduitPublication")
+  Produit       Produit     @relation(fields: [idProduit], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fkPublicationProduitProduit")
+
+  @@id([idPublication, idProduit], map: "pkPublicationProduit")
+  @@index([idProduit], map: "idxPublicationProduitProduit")
 }
 
 model PublicationReseau {

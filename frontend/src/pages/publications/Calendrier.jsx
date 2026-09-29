@@ -10,14 +10,15 @@ function PubMini({ publication, onOuvrir }) {
   return (
     <button
       type="button"
-      className={`pub-mini pub-mini--${publication.statut}`}
+      className={`pub-mini pub-mini--${publication.statut} ${publication.type === 'story' ? 'pub-mini--story' : ''}`}
       onClick={(e) => {
         e.stopPropagation();
         onOuvrir(publication);
       }}
-      title={publication.nom}
+      title={`${publication.type === 'story' ? 'Story · ' : ''}${publication.nom}`}
     >
       <Icone aria-hidden="true" />
+      {publication.type === 'story' && <span className="pub-mini__type">Story</span>}
       {heure(publication.heureOccurrence ?? publication.dateHeurePublication)} {publication.nom}
     </button>
   );
@@ -44,7 +45,7 @@ export function CalendrierMois({ annee, mois, publications, onJour, onOuvrir }) 
             onClick={() => onJour(cle)}
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && onJour(cle)}
-            aria-label={`${d.getDate()} ${d.toLocaleDateString('fr-FR', { month: 'long' })}, ${liste.length} publication${liste.length > 1 ? 's' : ''}`}
+            aria-label={`${d.getDate()} ${d.toLocaleDateString('fr-FR', { month: 'long' })}, ${liste.length} contenu${liste.length > 1 ? 's' : ''}`}
           >
             <span className="calendrier__numero">{d.getDate()}</span>
             <div className="calendrier__publications">
@@ -75,7 +76,7 @@ export function CalendrierSemaine({ depart, publications, onJour, onOuvrir }) {
           <Carte key={cle} nu className="semaine__jour">
             <div className={`semaine__entete ${cle === ceJour ? 'semaine__entete--aujourdhui' : ''}`}>
               <span>{JOURS_COURTS[(d.getDay() + 6) % 7]} {d.getDate()}</span>
-              <button type="button" className="bouton bouton--discret bouton--petit" onClick={() => onJour(cle)} aria-label={`Ajouter une publication le ${cle}`}>+</button>
+              <button type="button" className="bouton bouton--discret bouton--petit" onClick={() => onJour(cle)} aria-label={`Ajouter un contenu le ${cle}`}>+</button>
             </div>
             <div className="semaine__corps">
               {liste.length === 0 && <span className="tres-petit discret">—</span>}

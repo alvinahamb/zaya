@@ -9,24 +9,24 @@ import { EtatVide } from '../../components/ui/Divers.jsx';
 
 /** Publications rattachées à la commande (la corbeille est exclue côté API). */
 export function OngletPublications({ achat }) {
-  const lienNouvelle = `/publications?nouveau=1&achat=${achat.id}`;
+  const lienNouvelle = `/contenus?nouveau=1&achat=${achat.id}`;
   return (
     <Carte
-      titre="Publications de cette commande"
-      actions={<BoutonLien variante="principal" taille="petit" icone={Plus} to={lienNouvelle}>Nouvelle publication</BoutonLien>}
+      titre="Contenus de cette commande"
+      actions={<BoutonLien variante="principal" taille="petit" icone={Plus} to={lienNouvelle}>Nouveau contenu</BoutonLien>}
       nu
     >
       {achat.publications.length === 0 ? (
         <EtatVide
           icone={Megaphone}
-          titre="Aucune publication"
+          titre="Aucun contenu"
           description="Planifiez les contenus qui mettront en avant les produits de cette commande."
-          action={<BoutonLien variante="principal" icone={Plus} to={lienNouvelle}>Nouvelle publication</BoutonLien>}
+          action={<BoutonLien variante="principal" icone={Plus} to={lienNouvelle}>Nouveau contenu</BoutonLien>}
         />
       ) : (
         <div className="liste-elements">
           {achat.publications.map((p) => (
-            <Link key={p.id} to={`/publications/${p.id}`} className="element" style={{ color: 'inherit' }}>
+            <Link key={p.id} to={`/contenus/${p.id}`} className="element" style={{ color: 'inherit' }}>
               <div className="element__corps">
                 <div className="flex" style={{ flexWrap: 'wrap' }}>
                   <span className="element__titre">{p.nom}</span>

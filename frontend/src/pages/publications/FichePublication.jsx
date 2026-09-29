@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Pencil, Trash2, MoreHorizontal, RotateCcw, Plus, ExternalLink, Pin, Rocket, CheckCircle2 } from 'lucide-react';
+import { Pencil, Trash2, MoreHorizontal, RotateCcw, Plus, ExternalLink, Pin, Rocket, CheckCircle2, Gem } from 'lucide-react';
 import { Publications, Boosts, Frais, Reseaux, Achats, messageErreur } from '../../services/api.js';
 import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
@@ -9,9 +9,10 @@ import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Badge, BadgeStatutPublication } from '../../components/ui/Badge.jsx';
+import { LIBELLES_TYPE_CONTENU } from '../../lib/format.js';
 import { Montant } from '../../components/ui/Montant.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
-import { Chargement, Encart, EtatVide, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
+import { Chargement, Encart, EtatVide, MenuDeroulant, ElementMenu, ImageProduit } from '../../components/ui/Divers.jsx';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
 import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
@@ -79,7 +80,7 @@ function SectionBoosts({ publication, reseaux, recharger }) {
         nu
       >
         {publication.boosts.length === 0 ? (
-          <EtatVide icone={Rocket} titre="Aucun boost" description="Les promotions payantes de cette publication apparaîtront ici, avec leurs frais." />
+          <EtatVide icone={Rocket} titre="Aucun boost" description="Les promotions payantes de ce contenu apparaîtront ici, avec leurs frais." />
         ) : (
           publication.boosts.map((b) => (
             <div key={b.id} className="boost">
@@ -189,8 +190,8 @@ export function FichePublication() {
     }
   };
 
-  if (chargement && !publication) return <Page retour={{ to: '/publications', libelle: 'Publications' }}><Chargement /></Page>;
-  if (erreur && !publication) return <Page retour={{ to: '/publications', libelle: 'Publications' }}><Encart ton="erreur">{erreur}</Encart></Page>;
+  if (chargement && !publication) return <Page retour={{ to: '/contenus', libelle: 'Contenus' }}><Chargement /></Page>;
+  if (erreur && !publication) return <Page retour={{ to: '/contenus', libelle: 'Contenus' }}><Encart ton="erreur">{erreur}</Encart></Page>;
   if (!publication) return null;
 
   const p = publication;
@@ -199,9 +200,14 @@ export function FichePublication() {
 
   return (
     <Page
-      retour={{ to: '/publications', libelle: 'Publications' }}
+      retour={{ to: '/contenus', libelle: 'Contenus' }}
       titre={p.nom}
-      badge={<BadgeStatutPublication statut={p.statut} />}
+      badge={
+        <>
+          <Badge ton={p.type === 'story' ? 'principal' : undefined}>{LIBELLES_TYPE_CONTENU[p.type] ?? p.type}</Badge>
+          <BadgeStatutPublication statut={p.statut} />
+        </>
+      }
       sousTitre={
         <div className="flex" style={{ flexWrap: 'wrap', gap: '4px 12px' }}>
           <span>{dateHeure(p.dateHeurePublication)}</span>
@@ -212,17 +218,17 @@ export function FichePublication() {
       actions={
         <>
           {supprimee ? (
-            <Bouton variante="principal" icone={RotateCcw} chargement={enCours} onClick={() => agir(() => Publications.restaurer(p.id), 'Publication restaurée')}>
+            <Bouton variante="principal" icone={RotateCcw} compact chargement={enCours} onClick={() => agir(() => Publications.restaurer(p.id), 'Contenu restauré')}>
               Restaurer
             </Bouton>
           ) : (
             <>
               {suivant && (
-                <Bouton variante="principal" icone={CheckCircle2} chargement={enCours} onClick={() => agir(() => Publications.changerStatut(p.id, suivant.statut), 'Statut mis à jour')}>
+                <Bouton variante="principal" icone={CheckCircle2} compact chargement={enCours} onClick={() => agir(() => Publications.changerStatut(p.id, suivant.statut), 'Statut mis à jour')}>
                   {suivant.libelle}
                 </Bouton>
               )}
-              <Bouton icone={Pencil} onClick={() => setModification(true)}>Modifier</Bouton>
+              <Bouton icone={Pencil} compact onClick={() => setModification(true)}>Modifier</Bouton>
             </>
           )}
           <MenuDeroulant bouton={({ basculer, ouvert }) => <Bouton icone={MoreHorizontal} onClick={basculer} aria-label="Plus d'actions" aria-expanded={ouvert} />}>
@@ -235,12 +241,32 @@ export function FichePublication() {
         </>
       }
     >
-      {supprimee && <Encart ton="attention">Cette publication est à la corbeille. Restaurez-la pour la retrouver dans le calendrier et les tâches.</Encart>}
+      {supprimee && <Encart ton="attention">Ce contenu est à la corbeille. Restaurez-le pour le retrouver dans le calendrier et les tâches.</Encart>}
 
       <div className="fiche-pub espace-bas">
         <Visuel titre="Idée Pinterest" url={p.lienPinterest} icone={Pin} vide="Aucun lien Pinterest" />
         <Visuel titre="Contenu créé" url={p.lienContenu} icone={ExternalLink} vide="Pas encore de contenu lié" />
       </div>
+
+      <Carte titre={`Bijoux présentés${p.produits?.length ? ` (${p.produits.length})` : ''}`} className="espace-bas">
+        {p.produits?.length ? (
+          <div className="bijoux-pub">
+            {p.produits.map((b) => (
+              <Link key={b.id} to={`/produits/${b.id}`} className="bijou-pub" title={b.nom}>
+                <ImageProduit src={b.image} alt="" taille="grande" />
+                <span className="bijou-pub__nom">{b.nom}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <EtatVide
+            icone={Gem}
+            titre="Aucun bijou lié"
+            description={p.achat ? 'Modifiez le contenu pour choisir les bijoux de la commande qui y apparaissent.' : "Liez d'abord le contenu à une commande, puis choisissez ses bijoux."}
+            action={!supprimee && <Bouton taille="petit" icone={Pencil} onClick={() => setModification(true)}>Choisir les bijoux</Bouton>}
+          />
+        )}
+      </Carte>
 
       {p.description && (
         <Carte titre="Description" className="espace-bas">
@@ -259,27 +285,27 @@ export function FichePublication() {
         onEnregistre={(maj) => {
           setDonnees(maj);
           setModification(false);
-          notifier('Publication enregistrée');
+          notifier('Contenu enregistré');
         }}
       />
       <Confirmation
         ouverte={confirmation === 'corbeille'}
         titre="Mettre à la corbeille ?"
-        message="La publication sort du calendrier et des tâches. Vous pourrez la restaurer depuis la liste (filtre « Corbeille »)."
+        message="Le contenu sort du calendrier et des tâches. Vous pourrez le restaurer depuis la liste (filtre « Corbeille »)."
         libelleConfirmer="Mettre à la corbeille"
         ton="danger"
         chargement={enCours}
-        onConfirmer={() => agir(() => Publications.supprimer(p.id), 'Publication mise à la corbeille')}
+        onConfirmer={() => agir(() => Publications.supprimer(p.id), 'Contenu mis à la corbeille')}
         onAnnuler={() => setConfirmation(null)}
       />
       <Confirmation
         ouverte={confirmation === 'definitif'}
         titre="Supprimer définitivement ?"
-        message="La publication et ses boosts seront supprimés. Cette action est irréversible."
+        message="Le contenu et ses boosts seront supprimés. Cette action est irréversible."
         libelleConfirmer="Supprimer définitivement"
         ton="danger"
         chargement={enCours}
-        onConfirmer={() => agir(() => Publications.supprimer(p.id, true), 'Publication supprimée', () => naviguer('/publications'))}
+        onConfirmer={() => agir(() => Publications.supprimer(p.id, true), 'Contenu supprimé', () => naviguer('/contenus'))}
         onAnnuler={() => setConfirmation(null)}
       />
     </Page>

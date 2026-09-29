@@ -9,7 +9,7 @@ import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Tableau } from '../../components/ui/Tableau.jsx';
-import { BadgeStock, BadgeFigement } from '../../components/ui/Badge.jsx';
+import { BadgeStock } from '../../components/ui/Badge.jsx';
 import { Montant, Marge } from '../../components/ui/Montant.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Chargement, Encart, EtatVide } from '../../components/ui/Divers.jsx';
@@ -48,10 +48,7 @@ export function FicheProduit() {
 
   const colonnes = [
     { cle: 'achat', titre: 'Commande', principal: true, rendu: (l) => (
-      <div className="flex" style={{ flexWrap: 'wrap' }}>
-        <Link to={`/achats/${l.achat.id}`}>{l.achat.nom}</Link>
-        <BadgeFigement fige={Boolean(l.achat.dateFigement)} />
-      </div>
+      <Link to={`/achats/${l.achat.id}`}>{l.achat.nom}</Link>
     ) },
     { cle: 'date', titre: 'Commandée le', rendu: (l) => dateCourte(l.achat.dateCommande) },
     { cle: 'quantite', titre: 'Quantité', align: 'droite' },
@@ -69,7 +66,7 @@ export function FicheProduit() {
       sousTitre={produit.categorie?.nom}
       actions={
         <>
-          <Bouton icone={Pencil} onClick={() => setModification(true)}>Modifier</Bouton>
+          <Bouton icone={Pencil} compact onClick={() => setModification(true)}>Modifier</Bouton>
           <Bouton variante="danger" icone={Trash2} onClick={() => setSuppression(true)} aria-label="Supprimer le produit" />
         </>
       }

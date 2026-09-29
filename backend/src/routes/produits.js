@@ -47,7 +47,7 @@ const inclusionProduit = {
   ProduitImage: { orderBy: [{ ordre: 'asc' }, { id: 'asc' }] },
   DetailAchat: {
     include: {
-      Achat: { select: { id: true, nom: true, dateFigement: true, dateCommande: true } },
+      Achat: { select: { id: true, nom: true, dateCommande: true } },
       DetailVente: { select: { quantite: true } },
     },
     orderBy: { id: 'desc' },

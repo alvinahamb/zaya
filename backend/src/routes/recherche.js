@@ -34,7 +34,7 @@ routeurRecherche.get('/', async (req, res) => {
     }),
     prisma.publication.findMany({
       where: { nom: contient, statut: { not: 'supprimee' } },
-      select: { id: true, nom: true, statut: true, dateHeurePublication: true },
+      select: { id: true, nom: true, statut: true, type: true, dateHeurePublication: true },
       take: LIMITE,
       orderBy: { dateHeurePublication: 'desc' },
     }),

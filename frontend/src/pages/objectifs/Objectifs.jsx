@@ -294,7 +294,7 @@ export function Objectifs() {
               <EtatVide
                 icone={Target}
                 titre={`Aucun objectif pour ${libelleMois(mois).toLowerCase()}`}
-                description="Fixez un objectif chiffré (ventes, chiffre d'affaires, publications…) et suivez sa progression. Un rappel apparaît la veille de l'échéance."
+                description="Fixez un objectif chiffré (ventes, chiffre d'affaires, contenus…) et suivez sa progression. Un rappel apparaît la veille de l'échéance."
                 action={<Bouton variante="principal" icone={Plus} onClick={() => setFormulaire({})}>Nouvel objectif</Bouton>}
               />
             </Carte>

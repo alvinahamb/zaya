@@ -13,7 +13,7 @@ import { Chargement, Encart, EtatVide, ImageProduit } from '../../components/ui/
 import { FormulaireClient } from '../parametres/FormulaireClient.jsx';
 import { ChoixReseaux } from '../../components/ui/ChoixReseaux.jsx';
 
-/** Choix d'un article parmi les lignes de commande figées avec du stock. */
+/** Choix d'un article parmi les lignes de commande qui ont encore du stock. */
 function SelecteurLigne({ disponibles, valeur, onChoisir }) {
   const [ouvert, setOuvert] = useState(false);
   const [texte, setTexte] = useState('');

@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext.jsx';
 import { BarreHaut } from './components/layout/BarreHaut.jsx';
 import { Chargement } from './components/ui/Divers.jsx';
@@ -18,6 +18,17 @@ import { FichePublication } from './pages/publications/FichePublication.jsx';
 import { Statistiques } from './pages/Statistiques.jsx';
 import { Objectifs } from './pages/objectifs/Objectifs.jsx';
 import { Parametres } from './pages/parametres/Parametres.jsx';
+
+/** Anciennes adresses « /publications/… » : renvoyées vers « /contenus/… » (favoris, notifications). */
+function AncienneFicheContenu() {
+  const { id } = useParams();
+  const { search } = useLocation();
+  return <Navigate to={`/contenus/${id}${search}`} replace />;
+}
+function AncienneListeContenus() {
+  const { search } = useLocation();
+  return <Navigate to={`/contenus${search}`} replace />;
+}
 
 function Coquille() {
   const { utilisateur, pret } = useAuth();
@@ -51,8 +62,10 @@ export default function App() {
         <Route path="ventes/nouvelle" element={<FormulaireVente />} />
         <Route path="ventes/:id" element={<FicheVente />} />
         <Route path="ventes/:id/modifier" element={<FormulaireVente />} />
-        <Route path="publications" element={<Publications />} />
-        <Route path="publications/:id" element={<FichePublication />} />
+        <Route path="contenus" element={<Publications />} />
+        <Route path="contenus/:id" element={<FichePublication />} />
+        <Route path="publications" element={<AncienneListeContenus />} />
+        <Route path="publications/:id" element={<AncienneFicheContenu />} />
         <Route path="statistiques" element={<Statistiques />} />
         <Route path="objectifs" element={<Objectifs />} />
         <Route path="parametres" element={<Parametres />} />

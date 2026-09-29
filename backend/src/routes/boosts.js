@@ -25,7 +25,7 @@ function lireCorps(corps = {}, { creation = false } = {}) {
     raison: corps.raison ? String(corps.raison).trim() : null,
   };
   // Un boost promeut une publication, fixée à la création
-  if (creation) donnees.idPublication = entierId(corps.idPublication, 'Publication');
+  if (creation) donnees.idPublication = entierId(corps.idPublication, 'Contenu');
   return { donnees, idReseaux: listeIds(corps.idReseaux, { nom: 'Réseau', minimum: 1 }) };
 }
 

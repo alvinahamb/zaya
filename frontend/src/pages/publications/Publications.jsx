@@ -4,16 +4,16 @@ import { Plus, ChevronLeft, ChevronRight, CalendarDays, LayoutGrid, Megaphone, E
 import { Publications as ApiPublications, Reseaux, Achats, messageErreur } from '../../services/api.js';
 import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
-import { dateHeure, versInputDateHeure, aujourdhuiISO, LIBELLES_STATUT_PUBLICATION } from '../../lib/format.js';
+import { dateHeure, versInputDateHeure, aujourdhuiISO, LIBELLES_STATUT_PUBLICATION, LIBELLES_TYPE_CONTENU } from '../../lib/format.js';
 import { cleJour, debutSemaine } from '../../lib/calendrier.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
-import { BadgeStatutPublication } from '../../components/ui/Badge.jsx';
+import { Badge, BadgeStatutPublication } from '../../components/ui/Badge.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Chargement, Encart, EtatVide, Segment, Onglets, BoutonsCsv, MenuDeroulant, ElementMenu } from '../../components/ui/Divers.jsx';
-import { dateCsv, codeCsv, idParNom, idsParNoms } from '../../lib/csv.js';
+import { dateCsv, codeCsv, idParNom, idsParNoms, normaliser } from '../../lib/csv.js';
 import { ApercuLien } from '../../components/ui/ApercuLien.jsx';
 import { FormulairePublication } from './FormulairePublication.jsx';
 import { ReseauxPublication } from '../../components/ui/ChoixReseaux.jsx';
@@ -23,14 +23,31 @@ const CLE_VUE = 'zaya.publications.vue';
 
 const COLONNES_CSV = [
   { cle: 'nom', titre: 'Nom' },
+  { cle: 'type', titre: 'Type', valeur: (p) => LIBELLES_TYPE_CONTENU[p.type] ?? p.type },
   { cle: 'dateHeurePublication', titre: 'Date', valeur: (p) => versInputDateHeure(p.dateHeurePublication).replace('T', ' ') },
   { cle: 'statut', titre: 'Statut', valeur: (p) => LIBELLES_STATUT_PUBLICATION[p.statut] },
   { cle: 'reseaux', titre: 'Réseaux', valeur: (p) => p.reseaux.map((r) => r.nom).join(', ') },
   { cle: 'achat', titre: 'Commande', valeur: (p) => p.achat?.nom },
+  { cle: 'bijoux', titre: 'Bijoux', valeur: (p) => (p.produits ?? []).map((b) => b.nom).join(', ') },
   { cle: 'description', titre: 'Description' },
   { cle: 'lienPinterest', titre: 'Lien Pinterest' },
   { cle: 'lienContenu', titre: 'Lien contenu' },
 ];
+
+/** Bijoux d'une ligne importée (« Bague A, Collier B »), cherchés parmi les articles de la commande. */
+function idsBijouxCsv(texte, achat) {
+  const noms = String(texte ?? '').split(',').map((x) => x.trim()).filter(Boolean);
+  if (!noms.length) return [];
+  if (!achat) throw new Error('Bijoux indiqués sans commande liée');
+  return noms.map((nom) => {
+    const n = normaliser(nom);
+    const article = (achat.articles ?? []).find((a) => normaliser(a.produit) === n || normaliser(a.codeShein) === n);
+    if (!article) throw new Error(`Bijou « ${nom} » absent de la commande « ${achat.nom} »`);
+    return article.idProduit;
+  });
+}
+
+const FILTRES_TYPE = Object.entries(LIBELLES_TYPE_CONTENU).map(([valeur, libelle]) => ({ valeur, libelle: libelle === 'Story' ? 'Stories' : `${libelle}s` }));
 
 const FILTRES_STATUT = [
   { valeur: 'a_faire', libelle: 'À faire' },
@@ -49,7 +66,7 @@ function LienIcone({ href, icone: Icone, children }) {
   );
 }
 
-/** Carte d'une publication : clic → fiche ; menu ⋯ → modifier, corbeille, restaurer. */
+/** Carte d'un contenu : clic → fiche ; menu ⋯ → modifier, corbeille, restaurer. */
 function CartePublication({ publication: p, onOuvrir, onModifier, onCorbeille, onRestaurer, onSupprimerDefinitivement }) {
   const supprimee = p.statut === 'supprimee';
   return (
@@ -63,6 +80,7 @@ function CartePublication({ publication: p, onOuvrir, onModifier, onCorbeille, o
       <div className="carte-pub__visuel">
         <ApercuLien url={p.lienPinterest} alt="" />
         <span className="carte-pub__statut">
+          {p.type === 'story' && <Badge ton="principal">Story</Badge>}
           <BadgeStatutPublication statut={p.statut} />
         </span>
         <div className="carte-pub__menu" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
@@ -116,6 +134,7 @@ export function Publications() {
   const [curseur, setCurseur] = useState(() => new Date());
   const [statut, setStatut] = useState('');
   const [reseau, setReseau] = useState('');
+  const [type, setType] = useState('');
   const [formulaire, setFormulaire] = useState(null); // { publication?, date?, idAchat? }
   const [confirmation, setConfirmation] = useState(null); // { type: 'corbeille' | 'definitif', publication }
   const [enCours, setEnCours] = useState(false);
@@ -157,8 +176,8 @@ export function Publications() {
   }, [onglet, vueCalendrier, curseur]);
 
   const charger = useCallback(
-    () => ApiPublications.lister({ ...periode, statut: onglet === 'liste' && statut ? statut : undefined, reseau: reseau || undefined }),
-    [periode, onglet, statut, reseau],
+    () => ApiPublications.lister({ ...periode, statut: onglet === 'liste' && statut ? statut : undefined, reseau: reseau || undefined, type: type || undefined }),
+    [periode, onglet, statut, reseau, type],
   );
   const chargerReseaux = useCallback(() => Reseaux.lister(), []);
   const chargerAchats = useCallback(() => Achats.lister(), []);
@@ -180,7 +199,7 @@ export function Publications() {
 
   const listeTriee = useMemo(() => [...(publications ?? [])].sort((a, b) => (a.dateHeurePublication < b.dateHeurePublication ? 1 : -1)), [publications]);
   const ouvrirNouveau = (date = aujourdhuiISO()) => setFormulaire({ date });
-  const ouvrirFiche = (p) => naviguer(`/publications/${p.id}`);
+  const ouvrirFiche = (p) => naviguer(`/contenus/${p.id}`);
 
   const agir = async (action, message) => {
     setEnCours(true);
@@ -197,7 +216,7 @@ export function Publications() {
   };
 
   return (
-    <Page titre="Publications" actions={<Bouton variante="principal" icone={Plus} compact onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>}>
+    <Page titre="Contenus" actions={<Bouton variante="principal" icone={Plus} compact onClick={() => ouvrirNouveau()}>Nouveau contenu</Bouton>}>
       <div className="espace-bas">
         <Onglets
           onglets={[{ cle: 'calendrier', libelle: 'Calendrier' }, { cle: 'liste', libelle: 'Liste', compteur: onglet === 'liste' ? listeTriee.length : undefined }]}
@@ -216,26 +235,33 @@ export function Publications() {
               <span className="calendrier__mois">{titrePeriode}</span>
               <Bouton variante="discret" taille="petit" onClick={() => setCurseur(new Date())}>Aujourd'hui</Bouton>
             </div>
+            <Selection value={type} onChange={(e) => setType(e.target.value)} placeholder="Tous les types" options={FILTRES_TYPE} aria-label="Filtrer par type" />
           </>
         ) : (
           <>
+            <Selection value={type} onChange={(e) => setType(e.target.value)} placeholder="Tous les types" options={FILTRES_TYPE} aria-label="Filtrer par type" />
             <Selection value={statut} onChange={(e) => setStatut(e.target.value)} placeholder="Tous les statuts" options={FILTRES_STATUT} aria-label="Filtrer par statut" />
             <Selection value={reseau} onChange={(e) => setReseau(e.target.value)} placeholder="Tous les réseaux" options={(reseaux ?? []).map((r) => ({ valeur: String(r.id), libelle: r.nom }))} aria-label="Filtrer par réseau" />
             <div className="pousser">
               <BoutonsCsv
-                nomFichier="publications"
+                nomFichier="contenus"
                 colonnes={COLONNES_CSV}
                 lignes={listeTriee}
-                importer={(r) => ApiPublications.creer({
-                  nom: r.nom,
-                  description: r.description,
-                  lienPinterest: r.lienPinterest,
-                  lienContenu: r.lienContenu,
-                  dateHeurePublication: dateCsv(r.dateHeurePublication),
-                  statut: codeCsv(r.statut, LIBELLES_STATUT_PUBLICATION),
-                  idReseaux: idsParNoms(r.reseaux, reseaux, 'Réseau'),
-                  idAchat: idParNom(r.achat, achats, 'Commande'),
-                })}
+                importer={(r) => {
+                  const idAchat = idParNom(r.achat, achats, 'Commande');
+                  return ApiPublications.creer({
+                    nom: r.nom,
+                    type: codeCsv(r.type, LIBELLES_TYPE_CONTENU),
+                    description: r.description,
+                    lienPinterest: r.lienPinterest,
+                    lienContenu: r.lienContenu,
+                    dateHeurePublication: dateCsv(r.dateHeurePublication),
+                    statut: codeCsv(r.statut, LIBELLES_STATUT_PUBLICATION),
+                    idReseaux: idsParNoms(r.reseaux, reseaux, 'Réseau'),
+                    idAchat,
+                    idProduits: idsBijouxCsv(r.bijoux, achats?.find((a) => a.id === idAchat)),
+                  });
+                }}
                 onImporte={recharger}
               />
             </div>
@@ -256,9 +282,9 @@ export function Publications() {
         <Carte nu>
           <EtatVide
             icone={Megaphone}
-            titre={statut === 'supprimee' ? 'La corbeille est vide' : 'Aucune publication'}
+            titre={statut === 'supprimee' ? 'La corbeille est vide' : 'Aucun contenu'}
             description={statut === 'supprimee' ? undefined : 'Planifiez vos contenus à créer et à publier.'}
-            action={statut !== 'supprimee' && <Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouveau()}>Nouvelle publication</Bouton>}
+            action={statut !== 'supprimee' && <Bouton variante="principal" icone={Plus} onClick={() => ouvrirNouveau()}>Nouveau contenu</Bouton>}
           />
         </Carte>
       ) : (
@@ -270,7 +296,7 @@ export function Publications() {
               onOuvrir={ouvrirFiche}
               onModifier={(pub) => setFormulaire({ publication: pub })}
               onCorbeille={(pub) => setConfirmation({ type: 'corbeille', publication: pub })}
-              onRestaurer={(pub) => agir(() => ApiPublications.restaurer(pub.id), 'Publication restaurée')}
+              onRestaurer={(pub) => agir(() => ApiPublications.restaurer(pub.id), 'Contenu restauré')}
               onSupprimerDefinitivement={(pub) => setConfirmation({ type: 'definitif', publication: pub })}
             />
           ))}
@@ -288,8 +314,8 @@ export function Publications() {
         onEnregistre={(p) => {
           const creation = !formulaireOuvert?.publication;
           fermerFormulaire();
-          notifier('Publication enregistrée');
-          if (creation) naviguer(`/publications/${p.id}`);
+          notifier('Contenu enregistré');
+          if (creation) naviguer(`/contenus/${p.id}`);
           else recharger();
         }}
       />
@@ -300,7 +326,7 @@ export function Publications() {
         libelleConfirmer="Mettre à la corbeille"
         ton="danger"
         chargement={enCours}
-        onConfirmer={() => agir(() => ApiPublications.supprimer(confirmation.publication.id), 'Publication mise à la corbeille')}
+        onConfirmer={() => agir(() => ApiPublications.supprimer(confirmation.publication.id), 'Contenu mis à la corbeille')}
         onAnnuler={() => setConfirmation(null)}
       />
       <Confirmation
@@ -310,7 +336,7 @@ export function Publications() {
         libelleConfirmer="Supprimer définitivement"
         ton="danger"
         chargement={enCours}
-        onConfirmer={() => agir(() => ApiPublications.supprimer(confirmation.publication.id, true), 'Publication supprimée')}
+        onConfirmer={() => agir(() => ApiPublications.supprimer(confirmation.publication.id, true), 'Contenu supprimé')}
         onAnnuler={() => setConfirmation(null)}
       />
     </Page>

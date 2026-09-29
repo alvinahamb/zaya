@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma.js';
 import { aujourdhui, ajouterJours, jour } from '../lib/dates.js';
 import { venteNette, arrondir } from '../lib/calculs.js';
+import { cleNotification, clesVues } from './notifications.js';
 
 export const routeurAccueil = Router();
 
@@ -113,16 +114,17 @@ routeurAccueil.get('/', async (req, res) => {
     if (horaires.size === 0 && p.dateHeurePublication) horaires.set('', { echeance: p.dateHeurePublication, reseaux: [] });
     const plusieurs = horaires.size > 1;
     const verbe = p.statut === 'creee' ? 'Publier' : 'Créer';
+    const quoi = p.type === 'story' ? 'la story' : 'la publication';
     for (const h of [...horaires.values()].sort((a, b) => a.echeance - b.echeance)) {
       if (h.echeance > finHorizon) continue;
       ajouterHeure({
         id: plusieurs ? `publication-${p.id}-${h.echeance.getTime()}` : `publication-${p.id}`,
         type: 'publication',
-        module: 'Publications',
-        libelle: plusieurs && h.reseaux.length ? `${verbe} « ${p.nom} » sur ${h.reseaux.join(', ')}` : `${verbe} « ${p.nom} »`,
+        module: 'Contenus',
+        libelle: plusieurs && h.reseaux.length ? `${verbe} ${quoi} « ${p.nom} » sur ${h.reseaux.join(', ')}` : `${verbe} ${quoi} « ${p.nom} »`,
         detail: h.reseaux.join(', ') || null,
         echeance: h.echeance,
-        lien: `/publications/${p.id}`,
+        lien: `/contenus/${p.id}`,
         cible: { idPublication: p.id, statut: p.statut },
       });
     }
@@ -216,7 +218,13 @@ routeurAccueil.get('/', async (req, res) => {
     return a.cleTri < b.cleTri ? -1 : 1;
   });
   for (const t of taches) delete t.cleTri;
-  for (const n of notifications) delete n.cleTri;
+  for (const n of notifications) {
+    delete n.cleTri;
+    n.cle = cleNotification(n);
+  }
+  // Les notifications marquées vues (pour cette échéance) ne sont plus renvoyées
+  const vues = await clesVues(req.utilisateur.id);
+  const nonVues = notifications.filter((n) => !vues.has(n.cle));
 
   const caMois = ventesMois.reduce(
     (s, v) => s + v.DetailVente.reduce((t, dv) => t + venteNette(dv, v), 0),
@@ -227,7 +235,7 @@ routeurAccueil.get('/', async (req, res) => {
     date: ceJour,
     horizonJours: HORIZON_JOURS,
     taches,
-    notifications,
+    notifications: nonVues,
     livraisonsDuJour,
     objectifsProches,
     kpis: {

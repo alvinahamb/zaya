@@ -52,11 +52,12 @@ function enrichirAchat(achat, { complet = true } = {}) {
 
   const base = {
     ...reste,
-    fige: Boolean(achat.dateFigement),
     statut: statutAchat(achat, aujourdhui()),
     nbProduits: DetailAchat.length,
     // Contenu de la commande pour l'export CSV de la liste : articles tarifés, frais et budgets
     articles: DetailAchat.map((l) => ({
+      idProduit: l.idProduit,
+      image: l.Produit.image,
       produit: l.Produit.nom,
       codeShein: l.Produit.codeShein,
       quantite: l.quantite,
@@ -126,11 +127,8 @@ async function chargerAchat(id, tx = prisma) {
   return achat;
 }
 
-function exigerBrouillon(achat) {
-  if (achat.dateFigement) {
-    throw new ErreurHttp(409, 'La tarification de cette commande est figée : les lignes ne sont plus modifiables');
-  }
-}
+/** Quantité déjà vendue d'une ligne de commande : on ne peut pas descendre en dessous. */
+const quantiteVendue = (ligne) => ligne.quantite - stockRestant(ligne);
 
 /** Recalcule Achat.somme (€) à partir des lignes. */
 async function recalculerSomme(tx, idAchat) {
@@ -138,7 +136,7 @@ async function recalculerSomme(tx, idAchat) {
   await tx.achat.update({ where: { id: idAchat }, data: { somme: arrondir(sommeLignes(lignes)) } });
 }
 
-function lireEntete(corps = {}, { fige = false } = {}) {
+function lireEntete(corps = {}) {
   const nom = String(corps.nom ?? '').trim();
   exiger(nom, 'Le nom est obligatoire');
   const donnees = {
@@ -147,11 +145,9 @@ function lireEntete(corps = {}, { fige = false } = {}) {
     dateCommande: date(corps.dateCommande, 'Date de commande'),
     dateArriveeEstimee: date(corps.dateArriveeEstimee, "Date d'arrivée estimée"),
     dateArrivee: date(corps.dateArrivee, "Date d'arrivée"),
+    sommeAr: nombre(corps.sommeAr, { min: 0, nom: 'Somme payée' }) ?? 0,
+    sommeTotale: nombre(corps.sommeTotale, { min: 0, nom: 'Total de la commande' }),
   };
-  if (!fige) {
-    donnees.sommeAr = nombre(corps.sommeAr, { min: 0, nom: 'Somme payée' }) ?? 0;
-    donnees.sommeTotale = nombre(corps.sommeTotale, { min: 0, nom: 'Total de la commande' });
-  }
   return donnees;
 }
 
@@ -161,16 +157,16 @@ async function lireLigne(corps = {}, tx = prisma) {
   if (!produit) throw new ErreurHttp(404, 'Produit introuvable');
   const quantite = nombre(corps.quantite, { min: 1, entier: true, nom: 'Quantité' });
   exiger(quantite, 'La quantité est obligatoire');
-  // Le prix du catalogue sert de valeur par défaut, modifiable jusqu'au figement
+  // Le prix du catalogue sert de valeur par défaut, modifiable ensuite
   const prix = nombre(corps.prix, { min: 0, nom: "Prix d'achat" }) ?? Number(produit.prix ?? 0);
   return { idProduit, quantite, prix: arrondir(prix) };
 }
 
 // ---------------------------------------------------------------------------
-//  Lignes disponibles à la vente (commandes figées avec stock restant)
+//  Lignes disponibles à la vente (toutes les commandes, avec stock restant)
 // ---------------------------------------------------------------------------
 routeurAchats.get('/lignes-disponibles', async (req, res) => {
-  const where = { Achat: { dateFigement: { not: null } } };
+  const where = {};
   if (req.query.produit) where.idProduit = entierId(req.query.produit, 'Produit');
   if (req.query.q) {
     where.Produit = { nom: { contains: String(req.query.q), mode: 'insensitive' } };
@@ -233,9 +229,8 @@ routeurAchats.post('/', async (req, res) => {
 
 routeurAchats.put('/:id', async (req, res) => {
   const id = entierId(req.params.id);
-  const existant = await chargerAchat(id);
-  // Une fois figée, la somme payée ne bouge plus : elle détermine le taux
-  await prisma.achat.update({ where: { id }, data: lireEntete(req.body, { fige: Boolean(existant.dateFigement) }) });
+  await chargerAchat(id);
+  await prisma.achat.update({ where: { id }, data: lireEntete(req.body) });
   res.json(enrichirAchat(await chargerAchat(id)));
 });
 
@@ -250,12 +245,11 @@ routeurAchats.delete('/:id', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-//  Lignes de commande (avant figement)
+//  Lignes de commande (modifiables à tout moment)
 // ---------------------------------------------------------------------------
 routeurAchats.post('/:id/lignes', async (req, res) => {
   const id = entierId(req.params.id);
   const achat = await chargerAchat(id);
-  exigerBrouillon(achat);
   const ligne = await lireLigne(req.body);
   if (achat.DetailAchat.some((l) => l.idProduit === ligne.idProduit)) {
     throw new ErreurHttp(409, 'Ce produit est déjà sur la commande');
@@ -271,11 +265,12 @@ routeurAchats.put('/:id/lignes/:idLigne', async (req, res) => {
   const id = entierId(req.params.id);
   const idLigne = entierId(req.params.idLigne);
   const achat = await chargerAchat(id);
-  exigerBrouillon(achat);
   const existante = achat.DetailAchat.find((l) => l.id === idLigne);
   if (!existante) throw new ErreurHttp(404, 'Ligne introuvable');
 
   const quantite = nombre(req.body?.quantite, { min: 1, entier: true, nom: 'Quantité' }) ?? existante.quantite;
+  const vendus = quantiteVendue(existante);
+  exiger(quantite >= vendus, `« ${existante.Produit.nom} » : ${vendus} déjà vendu${vendus > 1 ? 's' : ''}, la quantité ne peut pas être inférieure`);
   const prix = nombre(req.body?.prix, { min: 0, nom: "Prix d'achat" }) ?? Number(existante.prix);
 
   await prisma.$transaction(async (tx) => {
@@ -289,8 +284,9 @@ routeurAchats.delete('/:id/lignes/:idLigne', async (req, res) => {
   const id = entierId(req.params.id);
   const idLigne = entierId(req.params.idLigne);
   const achat = await chargerAchat(id);
-  exigerBrouillon(achat);
-  if (!achat.DetailAchat.some((l) => l.id === idLigne)) throw new ErreurHttp(404, 'Ligne introuvable');
+  const ligne = achat.DetailAchat.find((l) => l.id === idLigne);
+  if (!ligne) throw new ErreurHttp(404, 'Ligne introuvable');
+  if (ligne.DetailVente.length) throw new ErreurHttp(409, `« ${ligne.Produit.nom} » a déjà été vendu : il ne peut pas être retiré de la commande`);
   await prisma.$transaction(async (tx) => {
     await tx.detailAchat.delete({ where: { id: idLigne } });
     await recalculerSomme(tx, id);
@@ -299,15 +295,12 @@ routeurAchats.delete('/:id/lignes/:idLigne', async (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-//  Tarification : enregistre prix, quantités et prix de vente.
-//  Avec `figer: true` (défaut), la commande est figée et plus rien n'est recalculé.
-//  Avec `figer: false`, on sauvegarde un brouillon modifiable.
+//  Tarification : enregistre quantités, prix d'achat, somme payée et prix de
+//  vente. Toujours modifiable : la marge est recalculée à chaque enregistrement.
 // ---------------------------------------------------------------------------
 routeurAchats.put('/:id/tarification', async (req, res) => {
   const id = entierId(req.params.id);
   const achat = await chargerAchat(id);
-  exigerBrouillon(achat);
-  const figer = req.body?.figer !== false;
 
   const lignesCorps = Array.isArray(req.body?.lignes) ? req.body.lignes : [];
   const sommeAr = nombre(req.body?.sommeAr, { min: 0, nom: 'Somme payée' }) ?? Number(achat.sommeAr);
@@ -315,28 +308,23 @@ routeurAchats.put('/:id/tarification', async (req, res) => {
     'sommeTotale' in (req.body ?? {})
       ? nombre(req.body.sommeTotale, { min: 0, nom: 'Total de la commande' })
       : achat.sommeTotale === null ? null : Number(achat.sommeTotale);
-  if (figer) {
-    exiger(achat.DetailAchat.length > 0, 'Ajoutez au moins un produit avant de figer la tarification');
-    exiger(sommeAr > 0, 'Renseignez la somme payée en Ariary pour calculer le taux');
-  }
 
   // Étape 1 : quantités et prix d'achat, qui déterminent la somme et le taux
   const lignes = achat.DetailAchat.map((existante) => {
     const corps = lignesCorps.find((c) => Number(c.id) === existante.id) ?? {};
     const quantite = nombre(corps.quantite, { min: 1, entier: true, nom: 'Quantité' }) ?? existante.quantite;
     const prix = arrondir(nombre(corps.prix, { min: 0, nom: "Prix d'achat" }) ?? Number(existante.prix));
+    const vendus = quantiteVendue(existante);
+    exiger(quantite >= vendus, `« ${existante.Produit.nom} » : ${vendus} déjà vendu${vendus > 1 ? 's' : ''}, la quantité ne peut pas être inférieure`);
     let prixVenteAr = nombre(corps.prixVenteAr, { min: 0, nom: 'Prix de vente' });
-    if (figer) exiger(prixVenteAr !== null, `Prix de vente manquant pour « ${existante.Produit.nom} »`);
     if (prixVenteAr !== null) prixVenteAr = arrondir(prixVenteAr);
     return { id: existante.id, idProduit: existante.idProduit, quantite, prix, prixVenteAr };
   });
 
   const somme = arrondir(sommeLignes(lignes));
   const taux = tauxEuro(sommeTotale ?? somme, sommeAr);
-  if (figer) exiger(taux, 'La somme en euro doit être supérieure à zéro');
 
   // Étape 2 : le prix de vente saisi fait foi, la marge en découle
-  const maintenant = new Date();
   await prisma.$transaction(async (tx) => {
     for (const l of lignes) {
       const margePct =
@@ -348,11 +336,11 @@ routeurAchats.put('/:id/tarification', async (req, res) => {
         data: { quantite: l.quantite, prix: l.prix, prixVenteAr: l.prixVenteAr, margePct },
       });
       // Dernier prix de vente posé, indicatif sur la fiche produit
-      if (figer) await tx.produit.update({ where: { id: l.idProduit }, data: { prixVenteAr: l.prixVenteAr } });
+      if (l.prixVenteAr !== null) await tx.produit.update({ where: { id: l.idProduit }, data: { prixVenteAr: l.prixVenteAr } });
     }
     await tx.achat.update({
       where: { id },
-      data: { somme, sommeTotale, sommeAr, ...(figer ? { dateFigement: maintenant } : {}) },
+      data: { somme, sommeTotale, sommeAr },
     });
   });
 

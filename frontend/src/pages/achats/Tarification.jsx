@@ -1,25 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Trash2, Lock, Save, Package, PackagePlus, Percent } from 'lucide-react';
+import { Plus, Trash2, Save, Package, PackagePlus, Percent } from 'lucide-react';
 import { Achats, Produits, Categories, messageErreur } from '../../services/api.js';
-import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
+import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
 import { arrondir, tauxEuro, prixAchatAr, prixVenteDepuisMarge, margeDepuisPrixVente, sommeLignes } from '../../lib/calculs.js';
-import { euro, ariary, taux as formatTaux, dateHeure } from '../../lib/format.js';
+import { euro, ariary, taux as formatTaux } from '../../lib/format.js';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Tableau } from '../../components/ui/Tableau.jsx';
 import { Champ, Saisie, SaisieMontant, Selection } from '../../components/ui/Champs.jsx';
-import { BadgeFigement, BadgeStock } from '../../components/ui/Badge.jsx';
-import { Montant, Marge } from '../../components/ui/Montant.jsx';
-import { Confirmation } from '../../components/ui/Modale.jsx';
+import { BadgeStock } from '../../components/ui/Badge.jsx';
 import { EtatVide, Encart, ImageProduit } from '../../components/ui/Divers.jsx';
 import { FormulaireProduit } from '../produits/FormulaireProduit.jsx';
 
 const texte = (v) => (v === null || v === undefined ? '' : String(v));
 
 /**
- * Modèle d'une ligne en brouillon : le prix de vente fait foi, la marge en
+ * Modèle d'une ligne en cours d'édition : le prix de vente fait foi, la marge en
  * découle. La marge et le prix de vente ne sont pas recalculés à chaque
  * frappe : on tape un nombre entier puis Entrée (ou on quitte le champ) pour
  * valider. `margeSaisie` garde la marge validée telle que tapée, pour ne pas la
@@ -35,6 +33,7 @@ const depuisServeur = (l) => ({
   margeSaisie: null,
   prixVenteSaisi: null,
   stockRestant: l.stockRestant,
+  quantiteVendue: l.quantiteVendue ?? 0,
   sale: false,
 });
 
@@ -42,7 +41,7 @@ const depuisServeur = (l) => ({
 function fusionner(locales, serveur) {
   return serveur.map((l) => {
     const locale = locales.find((x) => x.id === l.id);
-    return locale?.sale ? { ...locale, produit: l.produit, stockRestant: l.stockRestant } : depuisServeur(l);
+    return locale?.sale ? { ...locale, produit: l.produit, stockRestant: l.stockRestant, quantiteVendue: l.quantiteVendue ?? 0 } : depuisServeur(l);
   });
 }
 
@@ -67,10 +66,9 @@ const surEntree = (valider) => (e) => {
   valider();
 };
 
-/** Écran de tarification : marge et prix de vente liés, brouillon puis figement. */
+/** Écran de tarification : marge et prix de vente liés, modifiables à tout moment. */
 export function Tarification({ achat, setAchat }) {
   const { notifier } = useToast();
-  const mobile = useMediaQuery(REQUETE_MOBILE);
   const [lignes, setLignes] = useState(() => achat.lignes.map(depuisServeur));
   const [sommeAr, setSommeAr] = useState(texte(achat.sommeAr));
   const [sommeTotale, setSommeTotale] = useState(texte(achat.sommeTotale));
@@ -78,8 +76,7 @@ export function Tarification({ achat, setAchat }) {
   const [margeGlobale, setMargeGlobale] = useState('');
   const [achatVu, setAchatVu] = useState(achat);
   const [modifiee, setModifiee] = useState(null); // { id, champ, t } : dernière cellule modifiée, surlignée
-  const [confirmation, setConfirmation] = useState(false);
-  const [enregistrement, setEnregistrement] = useState(null); // 'brouillon' | 'figer' | 'ligne'
+  const [enregistrement, setEnregistrement] = useState(null); // 'tarif' | 'ligne'
   const [erreur, setErreur] = useState(null);
 
   // Nouvelle version de la commande (ligne ajoutée ou retirée) : on resynchronise sans perdre les saisies
@@ -157,8 +154,7 @@ export function Tarification({ achat, setAchat }) {
     setLignes((liste) => liste.map((l) => (l.margeSaisie === null ? l : { ...l, margeSaisie: null })));
   };
 
-  const corps = (figer) => ({
-    figer,
+  const corps = () => ({
     sommeAr: sommeAr === '' ? 0 : Number(sommeAr),
     sommeTotale: sommeTotale === '' ? null : Number(sommeTotale),
     lignes: lignes.map((l) => ({
@@ -169,33 +165,24 @@ export function Tarification({ achat, setAchat }) {
     })),
   });
 
-  const enregistrer = async (figer) => {
+  const enregistrer = async () => {
     setErreur(null);
-    if (figer) {
-      const manquantes = lignes.filter((l) => l.prixVenteAr === '');
-      if (manquantes.length) {
-        setErreur(`Prix de vente manquant : ${manquantes.map((l) => l.produit.nom).join(', ')}`);
-        setConfirmation(false);
-        return;
-      }
-      if (!taux) {
-        setErreur('Renseignez la somme payée en Ariary et au moins un prix d’achat pour calculer le taux.');
-        setConfirmation(false);
-        return;
-      }
+    const tropBas = lignes.filter((l) => Number(l.quantite) < l.quantiteVendue);
+    if (tropBas.length) {
+      setErreur(`Quantité inférieure à ce qui est déjà vendu : ${tropBas.map((l) => `${l.produit.nom} (${l.quantiteVendue} vendu${l.quantiteVendue > 1 ? 's' : ''})`).join(', ')}`);
+      return;
     }
-    setEnregistrement(figer ? 'figer' : 'brouillon');
+    setEnregistrement('tarif');
     try {
-      const maj = await Achats.tarifer(achat.id, corps(figer));
+      const maj = await Achats.tarifer(achat.id, corps());
       setLignes(maj.lignes.map(depuisServeur));
       setSommeArSale(false);
       setAchat(maj);
-      notifier(figer ? 'Tarification enregistrée et figée' : 'Brouillon enregistré');
+      notifier('Tarification enregistrée');
     } catch (err) {
       setErreur(messageErreur(err));
     } finally {
       setEnregistrement(null);
-      setConfirmation(false);
     }
   };
 
@@ -231,57 +218,6 @@ export function Tarification({ achat, setAchat }) {
     ),
   };
 
-  if (achat.fige) {
-    const colonnes = [
-      colonneProduit,
-      { cle: 'quantite', titre: 'Quantité', align: 'droite' },
-      { cle: 'prix', titre: "Prix d'achat (€)", align: 'droite', classe: 'colonne-euro', rendu: (l) => <Montant valeur={l.prix} devise="€" /> },
-      { cle: 'prixAchatAr', titre: "Prix d'achat (Ar)", align: 'droite', classe: 'colonne-ar', rendu: (l) => <Montant valeur={prixAchatAr(l.prix, achat.taux)} /> },
-      { cle: 'margePct', titre: 'Marge', align: 'droite', rendu: (l) => <Marge pct={l.margePct} /> },
-      { cle: 'prixVenteAr', titre: 'Prix de vente (Ar)', align: 'droite', rendu: (l) => <Montant valeur={l.prixVenteAr} className="gras" /> },
-      { cle: 'stock', titre: 'Stock restant', align: 'droite', rendu: (l) => <BadgeStock restant={l.stockRestant} /> },
-    ];
-    return (
-      <Carte nu className="tarif">
-        <div className="tarif__barre">
-          <BadgeFigement fige />
-          <span className="petit secondaire">
-            Figée le {dateHeure(achat.dateFigement)} · {formatTaux(achat.taux)} · Total {euro(achat.sommeEffective)}
-            {achat.sommeTotale !== null && ` (lignes ${euro(achat.somme)})`} · Payé {ariary(achat.sommeAr)}
-          </span>
-        </div>
-        {mobile ? (
-          <div className="liste-cartes">
-            {achat.lignes.map((l) => (
-              <div key={l.id} className="ligne-article">
-                <ImageProduit src={l.produit.image} alt="" taille="moyenne" />
-                <div className="ligne-article__corps">
-                  <div className="flex-entre" style={{ gap: 8 }}>
-                    <Link to={`/produits/${l.produit.id}`} className="gras" style={{ color: 'inherit' }}>{l.produit.nom}</Link>
-                    <BadgeStock restant={l.stockRestant} />
-                  </div>
-                  <div className="tres-petit secondaire">
-                    {l.quantite} × {euro(l.prix)} · soit {ariary(prixAchatAr(l.prix, achat.taux))} l'unité
-                  </div>
-                  <div className="ligne-article__rang" style={{ marginTop: 4 }}>
-                    <span className="secondaire">Prix de vente</span>
-                    <span className="gras tabulaire">{ariary(l.prixVenteAr)}</span>
-                  </div>
-                  <div className="ligne-article__rang">
-                    <span className="secondaire">Marge</span>
-                    <Marge pct={l.margePct} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Tableau colonnes={colonnes} lignes={achat.lignes} cartes={false} />
-        )}
-      </Carte>
-    );
-  }
-
   const colonnes = [
     colonneProduit,
     {
@@ -290,7 +226,8 @@ export function Tarification({ achat, setAchat }) {
       align: 'droite',
       rendu: (l) => (
         <div key={cleCellule(l.id, 'quantite')} className={classeCellule(l.id, 'quantite')}>
-          <Saisie type="number" inputMode="numeric" min="1" step="1" value={l.quantite} onChange={(e) => changerLigne(l.id, 'quantite', e.target.value)} aria-label={`Quantité de ${l.produit.nom}`} style={{ width: 90, textAlign: 'right' }} />
+          <Saisie type="number" inputMode="numeric" min={Math.max(1, l.quantiteVendue)} step="1" value={l.quantite} onChange={(e) => changerLigne(l.id, 'quantite', e.target.value)} aria-label={`Quantité de ${l.produit.nom}`} style={{ width: 90, textAlign: 'right' }} />
+          {l.quantiteVendue > 0 && <div className="tres-petit secondaire">{l.quantiteVendue} vendu{l.quantiteVendue > 1 ? 's' : ''}</div>}
         </div>
       ),
     },
@@ -354,12 +291,21 @@ export function Tarification({ achat, setAchat }) {
         </div>
       ),
     },
+    { cle: 'stock', titre: 'Stock', align: 'droite', rendu: (l) => <BadgeStock restant={l.stockRestant} /> },
     {
       cle: 'actions',
       titre: '',
       align: 'droite',
       rendu: (l) => (
-        <Bouton variante="discret" taille="petit" icone={Trash2} onClick={() => supprimerLigne(l)} disabled={enregistrement === 'ligne'} aria-label={`Retirer ${l.produit.nom}`} />
+        <Bouton
+          variante="discret"
+          taille="petit"
+          icone={Trash2}
+          onClick={() => supprimerLigne(l)}
+          disabled={enregistrement === 'ligne' || l.quantiteVendue > 0}
+          aria-label={`Retirer ${l.produit.nom}`}
+          title={l.quantiteVendue > 0 ? 'Déjà vendu : ne peut pas être retiré' : 'Retirer de la commande'}
+        />
       ),
     },
   ];
@@ -368,7 +314,6 @@ export function Tarification({ achat, setAchat }) {
     <>
       <Carte nu className="tarif">
         <div className="tarif__barre">
-          <BadgeFigement fige={false} />
           <Champ libelle="Total de la commande (€)" aide={sommeTotale === '' ? `Somme des lignes : ${euro(sommeEuro)}` : `Lignes : ${euro(sommeEuro)}`}>
             {(id) => <SaisieMontant id={id} suffixe="€" value={sommeTotale} onChange={(e) => changerSommeTotale(e.target.value)} placeholder={String(arrondir(sommeEuro))} />}
           </Champ>
@@ -412,23 +357,10 @@ export function Tarification({ achat, setAchat }) {
       {erreur && <div className="espace-haut"><Encart ton="erreur">{erreur}</Encart></div>}
 
       <div className="formulaire__actions espace-haut">
-        <Bouton icone={Save} onClick={() => enregistrer(false)} chargement={enregistrement === 'brouillon'} disabled={enregistrement !== null || lignes.length === 0}>
-          Enregistrer le brouillon
-        </Bouton>
-        <Bouton variante="principal" icone={Lock} onClick={() => setConfirmation(true)} disabled={enregistrement !== null || lignes.length === 0}>
-          Enregistrer et figer
+        <Bouton variante="principal" icone={Save} onClick={enregistrer} chargement={enregistrement === 'tarif'} disabled={enregistrement !== null || lignes.length === 0}>
+          Enregistrer
         </Bouton>
       </div>
-
-      <Confirmation
-        ouverte={confirmation}
-        titre="Figer la tarification ?"
-        message="Les prix d'achat, les marges et les prix de vente seront enregistrés définitivement et ne seront plus recalculés, même si le catalogue change. Les produits deviendront disponibles à la vente."
-        libelleConfirmer="Enregistrer et figer"
-        chargement={enregistrement === 'figer'}
-        onConfirmer={() => enregistrer(true)}
-        onAnnuler={() => setConfirmation(false)}
-      />
     </>
   );
 }

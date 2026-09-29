@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Plus, Bell, BellRing, Settings, LogOut, ShoppingBag, Receipt, Package, Megaphone, Inbox, Target } from 'lucide-react';
+import { Search, Plus, Bell, BellRing, Settings, LogOut, ShoppingBag, Receipt, Package, Megaphone, Inbox, Target, Check, CheckCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext.jsx';
-import { Accueil } from '../../services/api.js';
+import { Accueil, Notifications } from '../../services/api.js';
 import { Bouton } from '../ui/Bouton.jsx';
 import { MenuDeroulant, ElementMenu } from '../ui/Divers.jsx';
 import { Recherche } from './Recherche.jsx';
@@ -16,7 +16,7 @@ const RUBRIQUES = [
   { to: '/achats', libelle: 'Achats' },
   { to: '/produits', libelle: 'Produits' },
   { to: '/ventes', libelle: 'Ventes' },
-  { to: '/publications', libelle: 'Publications' },
+  { to: '/contenus', libelle: 'Contenus' },
   { to: '/objectifs', libelle: 'Objectifs' },
   { to: '/statistiques', libelle: 'Statistiques' },
 ];
@@ -25,7 +25,7 @@ const NOUVEAUX = [
   { to: '/achats?nouveau=1', libelle: 'Nouvel achat', icone: ShoppingBag },
   { to: '/ventes/nouvelle', libelle: 'Nouvelle vente', icone: Receipt },
   { to: '/produits?nouveau=1', libelle: 'Nouveau produit', icone: Package },
-  { to: '/publications?nouveau=1', libelle: 'Nouvelle publication', icone: Megaphone },
+  { to: '/contenus?nouveau=1', libelle: 'Nouveau contenu', icone: Megaphone },
   { to: '/objectifs?nouveau=1', libelle: 'Nouvel objectif', icone: Target },
 ];
 
@@ -96,13 +96,23 @@ function useNotifications() {
       window.removeEventListener('focus', charger);
     };
   }, [charger]);
-  return notifications;
+
+  // Marquer vu : retrait immédiat de la liste, puis enregistrement (rechargement si l'appel échoue)
+  const marquerVues = useCallback(
+    (cles) => {
+      if (!cles.length) return;
+      setNotifications((liste) => liste.filter((n) => !cles.includes(n.cle)));
+      Notifications.marquerVues(cles).catch(charger);
+    },
+    [charger],
+  );
+  return { notifications, marquerVues };
 }
 
 export function BarreHaut() {
   const { utilisateur, deconnecter } = useAuth();
   const [rechercheOuverte, setRechercheOuverte] = useState(false);
-  const notifications = useNotifications();
+  const { notifications, marquerVues } = useNotifications();
   const [permission, setPermission] = useState(permissionNavigateur);
   const naviguer = useNavigate();
 
@@ -168,7 +178,23 @@ export function BarreHaut() {
                 )}
               >
                 <div className="notifications">
-                  <div className="menu-deroulant__titre">Alertes</div>
+                  <div className="notifications__entete">
+                    <span className="menu-deroulant__titre">Alertes</span>
+                    {notifications.length > 1 && (
+                      <button
+                        type="button"
+                        className="notifications__tout-vu"
+                        // Le menu reste ouvert
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          marquerVues(notifications.map((n) => n.cle));
+                        }}
+                      >
+                        <CheckCheck size={14} aria-hidden="true" />
+                        Tout marquer vu
+                      </button>
+                    )}
+                  </div>
                   {notifications.length === 0 && (
                     <div className="etat-vide" style={{ padding: 20 }}>
                       <Inbox size={28} strokeWidth={1.5} />
@@ -176,15 +202,29 @@ export function BarreHaut() {
                     </div>
                   )}
                   {notifications.map((n) => (
-                    <Link key={n.id} className="notification" to={n.lien}>
-                      <span className={`notification__point notification__point--${n.niveau}`} aria-hidden="true" />
-                      <span style={{ minWidth: 0 }}>
-                        <span style={{ display: 'block' }}>{n.libelle}</span>
-                        <span className="tres-petit secondaire" style={{ display: 'block' }}>
-                          {[LIBELLES_QUAND[n.quand], n.module, n.detail, n.echeance && !n.detail ? dateCourte(n.echeance) : null].filter(Boolean).join(' · ')}
+                    <div key={n.cle ?? n.id} className="notification__ligne">
+                      <Link className="notification" to={n.lien}>
+                        <span className={`notification__point notification__point--${n.niveau}`} aria-hidden="true" />
+                        <span style={{ minWidth: 0 }}>
+                          <span style={{ display: 'block' }}>{n.libelle}</span>
+                          <span className="tres-petit secondaire" style={{ display: 'block' }}>
+                            {[LIBELLES_QUAND[n.quand], n.module, n.detail, n.echeance && !n.detail ? dateCourte(n.echeance) : null].filter(Boolean).join(' · ')}
+                          </span>
                         </span>
-                      </span>
-                    </Link>
+                      </Link>
+                      <button
+                        type="button"
+                        className="notification__vu"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          marquerVues([n.cle]);
+                        }}
+                        aria-label={`Marquer vu : ${n.libelle}`}
+                        title="Marquer vu"
+                      >
+                        <Check size={16} aria-hidden="true" />
+                      </button>
+                    </div>
                   ))}
                   {permission === 'default' && (
                     <>

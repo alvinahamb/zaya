@@ -79,18 +79,18 @@ export function FormulaireAchat({ ouvert, achat, onFermer, onEnregistre }) {
         <div className="formulaire__ligne">
           <Champ
             libelle="Total de la commande (€)"
-            aide={achat?.fige ? 'Figé avec la tarification.' : 'Frais inclus. Laissez vide pour prendre la somme des lignes.'}
+            aide="Frais inclus. Laissez vide pour prendre la somme des lignes."
           >
             {(id) => (
-              <SaisieMontant id={id} name="sommeTotale" suffixe="€" value={f.valeurs.sommeTotale} onChange={f.surChangement} disabled={Boolean(achat?.fige)} placeholder={achat ? String(achat.somme) : ''} />
+              <SaisieMontant id={id} name="sommeTotale" suffixe="€" value={f.valeurs.sommeTotale} onChange={f.surChangement} placeholder={achat ? String(achat.somme) : ''} />
             )}
           </Champ>
         <Champ
           libelle="Somme payée (Ar)"
-          aide={achat?.fige ? 'Figée avec la tarification : elle détermine le taux.' : 'Montant réellement payé en Ariary. Sert à calculer le taux d’un euro.'}
+          aide="Montant réellement payé en Ariary. Sert à calculer le taux d’un euro."
         >
           {(id) => (
-            <SaisieMontant id={id} name="sommeAr" suffixe="Ar" value={f.valeurs.sommeAr} onChange={f.surChangement} disabled={Boolean(achat?.fige)} />
+            <SaisieMontant id={id} name="sommeAr" suffixe="Ar" value={f.valeurs.sommeAr} onChange={f.surChangement} />
           )}
         </Champ>
         </div>

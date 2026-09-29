@@ -143,6 +143,11 @@ export const Objectifs = {
   changerStatut: (id, status) => donnees(api.patch(`/objectifs/${id}/statut`, { status })),
 };
 
+export const Notifications = {
+  // Clés renvoyées par l'accueil (« id|échéance ») : la notification disparaît jusqu'à sa prochaine échéance
+  marquerVues: (cles) => donnees(api.post('/notifications/vues', { cles })),
+};
+
 export const Stats = { lire: (params) => donnees(api.get('/stats', { params })) };
 export const Accueil = { lire: () => donnees(api.get('/accueil')) };
 export const Recherche = { chercher: (q) => donnees(api.get('/recherche', { params: { q } })) };

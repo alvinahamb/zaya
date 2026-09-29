@@ -128,6 +128,12 @@ export const LIBELLES_STATUT_PUBLICATION = {
   supprimee: 'Supprimée',
 };
 
+/** Types de contenu (même liste que TYPES_CONTENU côté API). */
+export const LIBELLES_TYPE_CONTENU = {
+  publication: 'Publication',
+  story: 'Story',
+};
+
 /** Statuts qu'on peut choisir dans un formulaire (la corbeille se gère par les actions). */
 export const STATUTS_PUBLICATION_ACTIFS = ['a_faire', 'creee', 'publiee'];
 
@@ -149,7 +155,7 @@ export const CATEGORIES_OBJECTIF = {
   ventes: 'Ventes',
   chiffre_affaires: "Chiffre d'affaires",
   clients: 'Clients',
-  publications: 'Publications',
+  publications: 'Contenus',
   stock: 'Stock',
   autre: 'Autre',
 };

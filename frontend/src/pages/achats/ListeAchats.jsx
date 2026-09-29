@@ -8,7 +8,7 @@ import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
 import { Tableau } from '../../components/ui/Tableau.jsx';
-import { BadgeStatutAchat, BadgeFigement } from '../../components/ui/Badge.jsx';
+import { BadgeStatutAchat } from '../../components/ui/Badge.jsx';
 import { Montant, Marge } from '../../components/ui/Montant.jsx';
 import { Selection } from '../../components/ui/Champs.jsx';
 import { RechercheListe } from '../../components/ui/RechercheListe.jsx';
@@ -18,7 +18,7 @@ import { FormulaireAchat } from './FormulaireAchat.jsx';
 
 /*
  * CSV des commandes, complet : une ligne par élément de la commande, dont les
- * colonnes (nom, dates, sommes, figée) sont répétées sur chaque ligne.
+ * colonnes (nom, dates, sommes) sont répétées sur chaque ligne.
  *   - Article : produit, quantité, prix d'achat, prix de vente, marge
  *   - Frais   : libellé, montant, date
  *   - Budget  : budget de communication (libellé, montant, date)
@@ -36,7 +36,6 @@ const COLONNES_CSV = [
   { cle: 'dateArrivee', titre: 'Arrivée réelle', valeur: (r) => versInputDate(r.dateArrivee) },
   { cle: 'sommeTotale', titre: 'Total commande (€)' },
   { cle: 'sommeAr', titre: 'Payé (Ar)' },
-  { cle: 'fige', titre: 'Figée', valeur: (r) => (r.fige ? 'oui' : 'non') },
   { cle: 'statut', titre: 'Statut', valeur: (r) => LIBELLES_STATUT_ACHAT[r.statut] },
   { cle: 'element', titre: 'Élément', valeur: (r) => ELEMENTS[r.type] ?? '' },
   { cle: 'produit', titre: 'Produit', valeur: (r) => r.article?.produit },
@@ -90,7 +89,7 @@ function idProduitCsv(ligne, produits) {
 
 /**
  * Recrée une commande complète : en-tête et articles, puis tarification
- * (prix de vente, figement si « Figée » = oui), puis frais et budgets.
+ * (prix de vente), puis frais et budgets.
  */
 async function importerAchat(groupe, produits) {
   const [r] = groupe;
@@ -112,10 +111,8 @@ async function importerAchat(groupe, produits) {
   });
 
   const prixVente = new Map(articles.map((l, i) => [idsProduits[i], nombreCsv(l.prixVenteAr)]));
-  const figee = ['oui', 'o', 'true', '1', 'x'].includes(normaliser(r.fige));
-  if (figee || [...prixVente.values()].some((p) => p !== null)) {
+  if ([...prixVente.values()].some((p) => p !== null)) {
     await Achats.tarifer(achat.id, {
-      figer: figee,
       sommeAr,
       sommeTotale,
       lignes: achat.lignes.map((l) => ({ id: l.id, prixVenteAr: prixVente.get(l.idProduit) ?? null })),
@@ -149,7 +146,6 @@ function CarteAchat({ achat: a }) {
         </div>
         <div className="carte-ligne__droite">
           <BadgeStatutAchat statut={a.statut} />
-          {!a.fige && <BadgeFigement fige={false} />}
         </div>
       </div>
       <div className="stats-mini">
@@ -163,7 +159,7 @@ function CarteAchat({ achat: a }) {
         </div>
         <div>
           <div className="stats-mini__libelle">Marge estimée</div>
-          <div className="stats-mini__valeur"><Marge pct={a.fige ? a.recap.margeEstimeePct : null} /></div>
+          <div className="stats-mini__valeur"><Marge pct={a.recap.margeEstimeePct} /></div>
         </div>
       </div>
     </Link>
@@ -195,10 +191,7 @@ export function ListeAchats() {
 
   const colonnes = [
     { cle: 'nom', titre: 'Nom', principal: true, rendu: (a) => (
-      <div className="flex" style={{ gap: 8, flexWrap: 'wrap' }}>
-        <span className="gras">{a.nom}</span>
-        {!a.fige && <BadgeFigement fige={false} />}
-      </div>
+      <span className="gras">{a.nom}</span>
     ) },
     { cle: 'dateCommande', titre: 'Commandée le', rendu: (a) => dateCourte(a.dateCommande) },
     { cle: 'arrivee', titre: 'Arrivée', rendu: (a) => (
@@ -210,7 +203,7 @@ export function ListeAchats() {
     { cle: 'nbProduits', titre: 'Produits', align: 'droite' },
     { cle: 'somme', titre: 'Total (€)', align: 'droite', classe: 'colonne-euro', rendu: (a) => <Montant valeur={a.sommeEffective} devise="€" /> },
     { cle: 'sommeAr', titre: 'Payé (Ar)', align: 'droite', classe: 'colonne-ar', rendu: (a) => <Montant valeur={a.sommeAr} /> },
-    { cle: 'marge', titre: 'Marge estimée', align: 'droite', rendu: (a) => <Marge pct={a.fige ? a.recap.margeEstimeePct : null} /> },
+    { cle: 'marge', titre: 'Marge estimée', align: 'droite', rendu: (a) => <Marge pct={a.recap.margeEstimeePct} /> },
   ];
 
   const etatVide = (

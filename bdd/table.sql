@@ -26,6 +26,7 @@ DROP TABLE IF EXISTS "Budget"       CASCADE;
 DROP TABLE IF EXISTS "Frais"        CASCADE;
 DROP TABLE IF EXISTS "BoostReseau"  CASCADE;
 DROP TABLE IF EXISTS "Boost"        CASCADE;
+DROP TABLE IF EXISTS "PublicationProduit" CASCADE;
 DROP TABLE IF EXISTS "PublicationReseau" CASCADE;
 DROP TABLE IF EXISTS "Publication"  CASCADE;
 DROP TABLE IF EXISTS "DetailVente"  CASCADE;
@@ -265,6 +266,19 @@ CREATE TABLE "PublicationReseau" (
     CONSTRAINT "fkPublicationReseauReseau"
         FOREIGN KEY ("idReseau")      REFERENCES "Reseau"      ("id")
 );
+
+-- Bijoux présentés dans la publication (pris dans la commande liée)
+CREATE TABLE "PublicationProduit" (
+    "idPublication" INT NOT NULL,
+    "idProduit"     INT NOT NULL,
+
+    CONSTRAINT "pkPublicationProduit" PRIMARY KEY ("idPublication", "idProduit"),
+    CONSTRAINT "fkPublicationProduitPublication"
+        FOREIGN KEY ("idPublication") REFERENCES "Publication" ("id") ON DELETE CASCADE,
+    CONSTRAINT "fkPublicationProduitProduit"
+        FOREIGN KEY ("idProduit")     REFERENCES "Produit"     ("id") ON DELETE CASCADE
+);
+CREATE INDEX "idxPublicationProduitProduit" ON "PublicationProduit" ("idProduit");
 
 
 -- =====================================================================

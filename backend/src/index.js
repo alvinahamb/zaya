@@ -26,6 +26,7 @@ import { routeurAccueil } from './routes/accueil.js';
 import { routeurRecherche } from './routes/recherche.js';
 import { routeurApercu } from './routes/apercu.js';
 import { routeurObjectifs } from './routes/objectifs.js';
+import { routeurNotifications } from './routes/notifications.js';
 
 const app = express();
 // En production, seul le front déployé peut appeler l'API ; en local, tout est ouvert
@@ -68,6 +69,7 @@ app.use('/api/livraisons', routeurLivraisons);
 app.use('/api/publications', routeurPublications);
 app.use('/api/stats', routeurStats);
 app.use('/api/objectifs', routeurObjectifs);
+app.use('/api/notifications', routeurNotifications);
 
 app.use('/api', (req, res) => res.status(404).json({ message: 'Route inconnue' }));
 app.use(gererErreurs);

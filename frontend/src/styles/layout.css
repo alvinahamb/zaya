@@ -328,8 +328,7 @@
   position: relative;
 }
 @media (max-width: 767px) {
-  .page__entete,
-  .carte__entete {
+  .page__entete {
     flex-wrap: nowrap;
     align-items: center;
   }
@@ -337,9 +336,12 @@
   .carte__entete > h3 {
     min-width: 0;
   }
+  /* Titre de carte long + actions : les actions passent dessous, calées à droite */
   .carte__entete > .flex {
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     gap: 4px;
+    margin-left: auto;
   }
   .page__actions {
     flex-wrap: nowrap;
@@ -566,4 +568,59 @@
   .espace {
     width: min(240px, 70vw);
   }
+}
+
+/* Alertes : « Marquer vu » par notification, et pour toutes */
+.notifications__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-right: 6px;
+}
+.notifications__tout-vu {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: var(--rayon-pilule);
+  background: none;
+  color: var(--principale);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.notifications__tout-vu:hover {
+  background: var(--peche-claire);
+}
+.notification__ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+.notification__ligne .notification {
+  flex: 1;
+  min-width: 0;
+}
+.notification__vu {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--texte-discret);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.notification__vu:hover {
+  background: var(--succes-fond);
+  color: var(--succes);
 }

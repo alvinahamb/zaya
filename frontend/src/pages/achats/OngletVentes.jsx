@@ -18,8 +18,8 @@ export function OngletVentes({ achat }) {
         <EtatVide
           icone={Receipt}
           titre="Aucune vente"
-          description={achat.fige ? 'Les ventes contenant des articles de cette commande apparaîtront ici.' : 'Figez la tarification pour pouvoir vendre ces produits.'}
-          action={achat.fige && <BoutonLien variante="principal" to="/ventes/nouvelle">Nouvelle vente</BoutonLien>}
+          description="Les ventes contenant des articles de cette commande apparaîtront ici."
+          action={<BoutonLien variante="principal" to="/ventes/nouvelle">Nouvelle vente</BoutonLien>}
         />
       ) : (
         <div className="liste-elements">

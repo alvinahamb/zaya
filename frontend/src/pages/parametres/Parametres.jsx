@@ -506,7 +506,7 @@ export function Parametres() {
                 { nom: 'lienCompte', libelle: 'Lien du compte', type: 'url', placeholder: 'https://…' },
               ]}
               lienChamp="lienCompte"
-              compte={(r) => <span>{nombre(r._count?.Vente ?? 0)} vente{(r._count?.Vente ?? 0) > 1 ? 's' : ''} · {nombre(r._count?.PublicationReseau ?? 0)} publication{(r._count?.PublicationReseau ?? 0) > 1 ? 's' : ''} · {nombre(r._count?.Client ?? 0)} client{(r._count?.Client ?? 0) > 1 ? 's' : ''}</span>}
+              compte={(r) => <span>{nombre(r._count?.Vente ?? 0)} vente{(r._count?.Vente ?? 0) > 1 ? 's' : ''} · {nombre(r._count?.PublicationReseau ?? 0)} contenu{(r._count?.PublicationReseau ?? 0) > 1 ? 's' : ''} · {nombre(r._count?.Client ?? 0)} client{(r._count?.Client ?? 0) > 1 ? 's' : ''}</span>}
             />
           )}
           {section === 'utilisateurs' && <SectionUtilisateurs />}

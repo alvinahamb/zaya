@@ -82,16 +82,12 @@ async function lireLignes(corps = [], tx, idVenteExclue = null) {
     where: { id: { in: [...demandeParLigne.keys()] } },
     include: {
       Produit: { select: { nom: true } },
-      Achat: { select: { dateFigement: true } },
       DetailVente: idVenteExclue ? { where: { idVente: { not: idVenteExclue } } } : true,
     },
   });
   for (const [id, demande] of demandeParLigne) {
     const detail = detailsAchat.find((d) => d.id === id);
     if (!detail) throw new ErreurHttp(404, 'Ligne de commande introuvable');
-    if (!detail.Achat.dateFigement) {
-      throw new ErreurHttp(400, `« ${detail.Produit.nom} » : la tarification de sa commande n'est pas encore figée`);
-    }
     const restant = stockRestant(detail);
     if (demande > restant) {
       throw new ErreurHttp(400, `Quantité supérieure au stock restant pour « ${detail.Produit.nom} » (reste ${restant})`);

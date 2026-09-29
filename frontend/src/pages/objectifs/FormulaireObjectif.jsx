@@ -69,7 +69,7 @@ export function FormulaireObjectif({ ouvert, objectif, mois, onFermer, onEnregis
           <Champ libelle="Catégorie">
             {(id) => <Selection id={id} name="category" value={f.valeurs.category} onChange={f.surChangement} options={OPTIONS_CATEGORIE} placeholder="Sans catégorie" />}
           </Champ>
-          <Champ libelle="Unité" aide="Ex. : ventes, Ar, publications">
+          <Champ libelle="Unité" aide="Ex. : ventes, Ar, contenus">
             {(id) => <Saisie id={id} name="unit" maxLength={30} value={f.valeurs.unit} onChange={f.surChangement} placeholder="ventes" />}
           </Champ>
         </div>

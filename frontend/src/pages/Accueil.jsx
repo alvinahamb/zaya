@@ -174,7 +174,7 @@ export function Accueil() {
             <div className="accueil__grille">
               <Carte titre={`Tâches du jour et des ${horizon} prochains jours`} nu className="accueil__taches">
                 {taches.length === 0 ? (
-                  <EtatVide icone={CheckCircle2} titre={`Rien à faire sur ${horizon} jours`} description="Les publications, réceptions, livraisons et objectifs apparaîtront ici, du plus proche au plus lointain." />
+                  <EtatVide icone={CheckCircle2} titre={`Rien à faire sur ${horizon} jours`} description="Les contenus, réceptions, livraisons et objectifs apparaîtront ici, du plus proche au plus lointain." />
                 ) : (
                   groupes.map((g) => (
                     <div key={g.libelle}>

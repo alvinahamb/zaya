@@ -1,6 +1,5 @@
 import { ariary, euro, pourcentage, nombre, taux as formatTaux } from '../../lib/format.js';
 import { Carte, Indicateur } from '../../components/ui/Carte.jsx';
-import { Encart } from '../../components/ui/Divers.jsx';
 
 const couleurMarge = (pct) => (pct === null || pct === undefined ? undefined : pct >= 0 ? 'var(--succes)' : 'var(--danger)');
 
@@ -12,13 +11,10 @@ export function OngletRecap({ achat }) {
   const margeReelleAr = r.achatAvecFrais ? r.venteActuelle - r.sommeBoosts - r.achatAvecFrais : null;
   return (
     <div className="colonne" style={{ gap: 20 }}>
-      {!achat.fige && (
-        <Encart ton="attention">La tarification n'est pas figée : l'estimation de vente et la marge estimée reflètent le brouillon en cours.</Encart>
-      )}
       <div className="bandeau-recap">
         <Indicateur libelle="Somme d'achat avec frais" valeur={ariary(r.achatAvecFrais)} sous={`Payé ${ariary(r.sommeAr)} + frais ${ariary(r.fraisAchat)}`} />
         <Indicateur libelle="Estimation de vente" valeur={ariary(r.estimationVente)} sous={`${nombre(r.quantiteAchetee)} article${r.quantiteAchetee > 1 ? 's' : ''} au prix posé`} />
-        <Indicateur libelle="Somme des boosts" valeur={ariary(r.sommeBoosts)} sous="Boosts des publications et leurs frais" />
+        <Indicateur libelle="Somme des boosts" valeur={ariary(r.sommeBoosts)} sous="Boosts des contenus et leurs frais" />
         <Indicateur libelle="Vente actuelle" valeur={ariary(r.venteActuelle)} sous={`${nombre(r.quantiteVendue)} vendu${r.quantiteVendue > 1 ? 's' : ''}, ${nombre(r.stockRestant)} restant${r.stockRestant > 1 ? 's' : ''}`} />
         <Indicateur
           libelle="Marge estimée"

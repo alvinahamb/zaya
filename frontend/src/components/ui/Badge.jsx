@@ -1,4 +1,4 @@
-import { Truck, PackageCheck, AlertTriangle, Circle, PenLine, CheckCircle2, Lock, FileEdit, Trash2, PhoneCall, Ban } from 'lucide-react';
+import { Truck, PackageCheck, AlertTriangle, Circle, PenLine, CheckCircle2, Trash2, PhoneCall, Ban } from 'lucide-react';
 import { LIBELLES_STATUT_ACHAT, LIBELLES_STATUT_PUBLICATION, LIBELLES_STATUT_LIVRAISON, nombre } from '../../lib/format.js';
 
 /** ton : neutre | succes | attention | danger | info | principal */
@@ -48,13 +48,6 @@ export function BadgeStock({ restant }) {
   return <Badge>{nombre(restant)} en stock</Badge>;
 }
 
-export function BadgeFigement({ fige }) {
-  return fige ? (
-    <Badge ton="succes" icone={Lock}>Figée</Badge>
-  ) : (
-    <Badge ton="attention" icone={FileEdit}>Brouillon</Badge>
-  );
-}
 
 const STATUTS_LIVRAISON = {
   a_programmer: { ton: 'attention', icone: Circle },

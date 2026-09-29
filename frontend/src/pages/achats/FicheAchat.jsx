@@ -4,10 +4,10 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Achats, messageErreur } from '../../services/api.js';
 import { useApi } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
-import { dateCourte, dateHeure, taux as formatTaux, ariary, pourcentage } from '../../lib/format.js';
+import { dateCourte, taux as formatTaux, ariary, pourcentage } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
-import { BadgeStatutAchat, BadgeFigement } from '../../components/ui/Badge.jsx';
+import { BadgeStatutAchat } from '../../components/ui/Badge.jsx';
 import { Onglets, Chargement, Encart } from '../../components/ui/Divers.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { FormulaireAchat } from './FormulaireAchat.jsx';
@@ -60,7 +60,7 @@ export function FicheAchat() {
     { cle: 'tarification', libelle: 'Produits et tarification', compteur: achat.nbProduits },
     { cle: 'frais', libelle: 'Frais', compteur: achat.frais.length },
     { cle: 'budget', libelle: 'Budget', compteur: achat.boosts.length },
-    { cle: 'publications', libelle: 'Publications', compteur: achat.publications.length },
+    { cle: 'publications', libelle: 'Contenus', compteur: achat.publications.length },
     { cle: 'ventes', libelle: 'Ventes', compteur: achat.ventes.length },
     { cle: 'recap', libelle: 'Récapitulatif' },
   ];
@@ -72,7 +72,6 @@ export function FicheAchat() {
       badge={
         <>
           <BadgeStatutAchat statut={achat.statut} />
-          <BadgeFigement fige={achat.fige} />
         </>
       }
       sousTitre={
@@ -80,13 +79,12 @@ export function FicheAchat() {
           <span className="meta"><span className="meta__libelle">Commandée le</span><strong>{dateCourte(achat.dateCommande)}</strong></span>
           <span className="meta"><span className="meta__libelle">Arrivée estimée</span><strong>{dateCourte(achat.dateArriveeEstimee)}</strong></span>
           {achat.dateArrivee && <span className="meta"><span className="meta__libelle">Reçue le</span><strong>{dateCourte(achat.dateArrivee)}</strong></span>}
-          {achat.fige && <span className="meta"><span className="meta__libelle">Figée le</span><strong>{dateHeure(achat.dateFigement)}</strong></span>}
           <span className="taux" title="Taux d'un euro sur cette commande">{formatTaux(achat.taux)}</span>
         </div>
       }
       actions={
         <>
-          <Bouton icone={Pencil} onClick={() => setModification(true)}>Modifier</Bouton>
+          <Bouton icone={Pencil} compact onClick={() => setModification(true)}>Modifier</Bouton>
           <Bouton variante="danger" icone={Trash2} onClick={() => setSuppression(true)} aria-label="Supprimer la commande" />
         </>
       }

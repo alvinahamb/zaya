@@ -244,7 +244,7 @@
   top: var(--hauteur-barre);
   z-index: 40;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin: 0 calc(-1 * var(--gouttiere)) 16px;
   padding: 10px var(--gouttiere);
@@ -283,13 +283,13 @@
 }
 @media (min-width: 768px) {
   .bandeau-recap {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
   }
 }
 @media (min-width: 1100px) {
   .bandeau-recap {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 }
 
@@ -349,7 +349,7 @@
 
 .ajout-ligne {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 16px 20px;
   border-top: 1px solid var(--bordure);
@@ -357,7 +357,7 @@
 }
 @media (min-width: 768px) {
   .ajout-ligne {
-    grid-template-columns: 2fr 1fr 1fr auto;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
     align-items: end;
   }
 }
@@ -413,7 +413,7 @@
    ---------------------------------------------------------------------- */
 .grille-produits {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 @media (min-width: 640px) {
@@ -454,12 +454,12 @@
 
 .fiche-produit {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
 @media (min-width: 768px) {
   .fiche-produit {
-    grid-template-columns: 340px 1fr;
+    grid-template-columns: 340px minmax(0, 1fr);
     align-items: stretch;
   }
   /* La photo principale prend la hauteur de la carte « Informations » (qui fixe la rangée) */
@@ -581,13 +581,13 @@
 }
 .definitions {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px 16px;
   margin: 0;
 }
 @media (min-width: 480px) {
   .definitions {
-    grid-template-columns: minmax(0, max-content) 1fr;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
     gap: 8px 16px;
   }
 }
@@ -619,7 +619,7 @@
    ---------------------------------------------------------------------- */
 .ligne-vente {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   padding: 14px 20px;
   border-bottom: 1px solid var(--bordure);
@@ -629,7 +629,7 @@
 }
 @media (min-width: 900px) {
   .ligne-vente {
-    grid-template-columns: 2fr 110px 160px 150px auto;
+    grid-template-columns: minmax(0, 2fr) 110px 160px 150px auto;
     align-items: end;
   }
 }
@@ -807,12 +807,12 @@
 
 .semaine {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 @media (min-width: 900px) {
   .semaine {
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 .semaine__jour {
@@ -899,6 +899,9 @@
   position: absolute;
   top: 8px;
   left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 .apercu-lien {
   width: 100%;
@@ -926,13 +929,37 @@
 /* Fiche d'une publication */
 .fiche-pub {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
 }
-@media (min-width: 900px) {
+/* Les deux visuels restent côte à côte, même sur mobile */
+.fiche-pub {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+@media (max-width: 599px) {
   .fiche-pub {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
+    gap: 10px;
+  }
+  .fiche-pub__visuel .carte__entete {
+    padding: 10px 12px;
+  }
+  .fiche-pub__visuel .carte__entete h3 {
+    font-size: 0.9rem;
+  }
+  /* Sur petit écran : juste le bouton « Ouvrir », l'adresse est dans le lien */
+  .fiche-pub__lien {
+    display: none;
+  }
+  .fiche-pub__pied {
+    padding: 10px 12px;
+  }
+  .fiche-pub__pied .bouton {
+    width: 100%;
+    justify-content: center;
+  }
+  .fiche-pub__visuel .etat-vide {
+    padding: 24px 8px;
   }
 }
 .fiche-pub__visuel .apercu-lien {
@@ -953,6 +980,7 @@
   padding: 12px 16px;
 }
 .fiche-pub__lien {
+  flex: 1 1 160px;
   min-width: 0;
   font-size: 0.8rem;
   color: var(--texte-secondaire);
@@ -1024,7 +1052,7 @@
    ---------------------------------------------------------------------- */
 .parametres {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 .menu-lateral {
@@ -1065,7 +1093,7 @@
 }
 @media (min-width: 900px) {
   .parametres {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 220px minmax(0, 1fr);
     gap: 20px;
     align-items: start;
   }
@@ -1093,7 +1121,7 @@
 /* Livraison d'une vente */
 .etapes {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
 }
 @media (min-width: 640px) {
@@ -1126,7 +1154,7 @@
 .accueil__grille {
   display: grid;
   gap: 16px;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   align-items: stretch;
 }
 .accueil__taches {
@@ -1139,7 +1167,7 @@
 }
 @media (min-width: 768px) {
   .accueil__grille {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   /* Hauteur nulle + min-height 100 % : la carte suit la rangée (fixée par les objectifs) sans l'agrandir */
   .accueil__taches {
@@ -1156,9 +1184,11 @@
 /* Récap des objectifs à venir : tuiles avec anneau de progression */
 .recap-objectifs {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
 }
 .recap-objectif {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1351,4 +1381,119 @@
   justify-content: space-between;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+/* Choix des bijoux d'une publication (parmi ceux de la commande liée) */
+.choix-bijoux__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.choix-bijoux__grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.choix-bijou {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 1.5px solid var(--bordure);
+  border-radius: var(--rayon-carte);
+  background: var(--surface);
+  color: var(--texte);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+.choix-bijou:hover {
+  border-color: var(--peche);
+}
+.choix-bijou[aria-pressed='true'] {
+  border-color: var(--principale);
+  background: var(--peche-claire);
+}
+.choix-bijou .img-produit--moyenne {
+  width: 56px;
+  height: 56px;
+}
+.choix-bijou__nom {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  width: 100%;
+  overflow: hidden;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  text-align: center;
+}
+.choix-bijou__coche {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--principale);
+  color: var(--sur-principale);
+}
+
+/* Fiche publication : bijoux présentés */
+.bijoux-pub {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 12px;
+}
+.bijou-pub {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  color: inherit;
+}
+.bijou-pub:hover {
+  text-decoration: none;
+}
+.bijou-pub .img-produit--grande {
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+.bijou-pub:hover .img-produit--grande {
+  transform: translateY(-2px);
+  box-shadow: var(--ombre);
+}
+.bijou-pub__nom {
+  overflow: hidden;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Calendrier : une story se distingue par un liseré et une étiquette */
+.pub-mini--story {
+  box-shadow: inset 3px 0 0 var(--principale);
+}
+.pub-mini__type {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--principale);
+  color: var(--sur-principale);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.5;
+  text-transform: uppercase;
 }

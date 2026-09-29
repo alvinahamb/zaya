@@ -129,9 +129,9 @@ export function OngletBudget({ achat, recharger }) {
         )}
       </Carte>
 
-      <Carte titre="Dépenses : boosts des publications" actions={<span className="petit secondaire">Total : <strong className="tabulaire">{ariary(depenseAr)}</strong></span>} nu>
+      <Carte titre="Dépenses : boosts des contenus" actions={<span className="petit secondaire">Total : <strong className="tabulaire">{ariary(depenseAr)}</strong></span>} nu>
         {achat.boosts.length === 0 ? (
-          <EtatVide icone={Rocket} titre="Aucun boost" description="Les boosts se créent depuis la fiche d'une publication liée à cette commande." />
+          <EtatVide icone={Rocket} titre="Aucun boost" description="Les boosts se créent depuis la fiche d'un contenu lié à cette commande." />
         ) : (
           <div className="liste-elements">
             {achat.boosts.map((b) => (
@@ -142,7 +142,7 @@ export function OngletBudget({ achat, recharger }) {
                     {(b.reseaux ?? []).map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
                   </div>
                   <div className="element__meta">
-                    {dateCourte(b.dateBoost)} · <Link to={`/publications/${b.publication.id}`}>{b.publication.nom}</Link>
+                    {dateCourte(b.dateBoost)} · <Link to={`/contenus/${b.publication.id}`}>{b.publication.nom}</Link>
                     {b.Frais.length > 0 && ` · frais ${ariary(b.totalAr - Number(b.montantAr))}`}
                   </div>
                 </div>

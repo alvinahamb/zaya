@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext.jsx';
 import { Logo } from '../components/layout/Logo.jsx';
 
 /** Espaces proposés avant la connexion ; chacun mène à son écran de connexion. */
-const ESPACES = [{ cle: 'zaya', nom: 'Zaya', description: 'Achats, ventes, stock et publications', connexion: '/connexion' }];
+const ESPACES = [{ cle: 'zaya', nom: 'Zaya', description: 'Achats, ventes, stock et contenus', connexion: '/connexion' }];
 
 /** Premier écran hors session : choix de l'espace, puis connexion. */
 export function ChoixEspace() {

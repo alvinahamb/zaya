@@ -99,7 +99,7 @@ export function FicheVente() {
       sousTitre={`${dateCourte(vente.dateVente)} · ${nombre(vente.nbArticles)} article${vente.nbArticles > 1 ? 's' : ''}${vente.client ? ` · ${vente.client.nom}${vente.client.telephone ? ` (${vente.client.telephone})` : ''}` : ' · client anonyme'}`}
       actions={
         <>
-          <BoutonLien icone={Pencil} to={`/ventes/${vente.id}/modifier`}>Modifier</BoutonLien>
+          <BoutonLien icone={Pencil} compact to={`/ventes/${vente.id}/modifier`}>Modifier</BoutonLien>
           <Bouton variante="danger" icone={Trash2} onClick={() => setSuppression(true)} aria-label="Supprimer la vente" />
         </>
       }

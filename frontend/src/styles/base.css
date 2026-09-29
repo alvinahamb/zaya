@@ -8,6 +8,14 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Filet de sécurité : la page ne défile jamais horizontalement (clip, contrairement
+   à hidden, ne casse pas les éléments « sticky » comme la barre du haut) */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 body {
   margin: 0;
   background: var(--fond);
@@ -146,6 +154,7 @@ th {
 }
 .grille {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 .grille-2 {
