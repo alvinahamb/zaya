@@ -17,3 +17,13 @@ export function ajouterJours(yyyymmdd, n) {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+/** Date et heure locales « YYYY-MM-DD HH:MM » dans le fuseau de l'activité. */
+export function dateHeureLocale(valeur) {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('fr-CA', { timeZone: FUSEAU, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+      .formatToParts(new Date(valeur))
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+}

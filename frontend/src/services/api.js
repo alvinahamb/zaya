@@ -24,6 +24,11 @@ const RACINE_API = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
 
 export const api = axios.create({ baseURL: `${RACINE_API}/api` });
 
+/** URL absolue d'une route de l'API (à coller hors de l'application, ex. un raccourci iOS). */
+export function urlApi(chemin) {
+  return `${RACINE_API || window.location.origin}/api${chemin}`;
+}
+
 /** Les images téléversées en local (`/uploads/…`) sont servies par l'API, pas par le front. */
 export function urlFichier(src) {
   return src?.startsWith('/uploads/') ? `${RACINE_API}${src}` : src;
@@ -146,6 +151,13 @@ export const Objectifs = {
 export const Notifications = {
   // Clés renvoyées par l'accueil (« id|échéance ») : la notification disparaît jusqu'à sa prochaine échéance
   marquerVues: (cles) => donnees(api.post('/notifications/vues', { cles })),
+};
+
+export const Rappels = {
+  etat: () => donnees(api.get('/rappels/jeton')),
+  // Le jeton n'est renvoyé en clair qu'à la création ; l'ancien cesse de fonctionner
+  generer: () => donnees(api.post('/rappels/jeton')),
+  desactiver: () => donnees(api.delete('/rappels/jeton')),
 };
 
 export const Stats = { lire: (params) => donnees(api.get('/stats', { params })) };

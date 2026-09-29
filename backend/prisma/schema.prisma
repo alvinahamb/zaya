@@ -172,6 +172,8 @@ model Utilisateur {
   role         String   @default("admin") @db.VarChar(20)
   actif        Boolean  @default(true)
   dateCreation DateTime @default(now()) @db.Timestamp(6)
+  /// Empreinte SHA-256 du jeton des Rappels iPhone (null : désactivé)
+  jetonRappels String?  @unique @db.VarChar(64)
   MonthlyAchievement MonthlyAchievement[]
   NotificationVue    NotificationVue[]
 }

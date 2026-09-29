@@ -25,6 +25,11 @@ const joursEntre = (depuis, cible) =>
  * terminent le plus tôt (puis qui commencent le plus tôt).
  */
 routeurAccueil.get('/', async (req, res) => {
+  res.json(await calculerAccueil(req.utilisateur.id));
+});
+
+/** Données du tableau de bord de l'utilisateur (aussi lues par les Rappels iPhone). */
+export async function calculerAccueil(idUtilisateur) {
   const ceJour = aujourdhui();
   const demain = ajouterJours(ceJour, 1);
   const horizon = ajouterJours(ceJour, HORIZON_JOURS);
@@ -57,11 +62,11 @@ routeurAccueil.get('/', async (req, res) => {
       orderBy: [{ dateHeureLivraison: 'asc' }, { dateHeureAppelLivreur: 'asc' }],
     }),
     prisma.monthlyAchievement.findMany({
-      where: { userId: req.utilisateur.id, status: 'en_cours', endDate: { lte: finHorizon } },
+      where: { userId: idUtilisateur, status: 'en_cours', endDate: { lte: finHorizon } },
       orderBy: { endDate: 'asc' },
     }),
     prisma.monthlyAchievement.findMany({
-      where: { userId: req.utilisateur.id, status: 'en_cours', endDate: { gte: new Date(ceJour) } },
+      where: { userId: idUtilisateur, status: 'en_cours', endDate: { gte: new Date(ceJour) } },
       orderBy: [{ endDate: 'asc' }, { startDate: 'asc' }],
       take: 3,
     }),
@@ -223,7 +228,7 @@ routeurAccueil.get('/', async (req, res) => {
     n.cle = cleNotification(n);
   }
   // Les notifications marquées vues (pour cette échéance) ne sont plus renvoyées
-  const vues = await clesVues(req.utilisateur.id);
+  const vues = await clesVues(idUtilisateur);
   const nonVues = notifications.filter((n) => !vues.has(n.cle));
 
   const caMois = ventesMois.reduce(
@@ -231,7 +236,7 @@ routeurAccueil.get('/', async (req, res) => {
     0,
   );
 
-  res.json({
+  return {
     date: ceJour,
     horizonJours: HORIZON_JOURS,
     taches,
@@ -245,5 +250,5 @@ routeurAccueil.get('/', async (req, res) => {
       publicationsAVenir: publications.length,
       livraisonsEnCours: livraisons.length,
     },
-  });
-});
+  };
+}

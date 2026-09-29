@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Pencil, Trash2, Tags, Share2, Users, KeyRound, UserX, UserCheck, ExternalLink, Contact, Phone } from 'lucide-react';
-import { Categories, Reseaux, Utilisateurs, Clients, messageErreur } from '../../services/api.js';
+import { Plus, Pencil, Trash2, Tags, Share2, Users, KeyRound, UserX, UserCheck, ExternalLink, Contact, Phone, Smartphone, Copy, RefreshCw } from 'lucide-react';
+import { Categories, Reseaux, Utilisateurs, Clients, Rappels, urlApi, messageErreur } from '../../services/api.js';
 import { useApi, useFormulaire, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useAuth } from '../../contexts/AuthContext.jsx';
 import { useToast } from '../../contexts/ToastContext.jsx';
@@ -22,6 +22,7 @@ const SECTIONS = [
   { cle: 'categories', libelle: 'Catégories', icone: Tags },
   { cle: 'reseaux', libelle: 'Réseaux sociaux', icone: Share2 },
   { cle: 'utilisateurs', libelle: 'Comptes utilisateurs', icone: Users },
+  { cle: 'rappels', libelle: 'Rappels iPhone', icone: Smartphone },
 ];
 
 /** Modale générique nom (+ champs optionnels) pour les tables de référence. */
@@ -466,6 +467,116 @@ function SectionUtilisateurs() {
   );
 }
 
+/** Lien lu chaque matin par un raccourci iOS qui crée les tâches du jour dans Rappels. */
+function SectionRappels() {
+  const { notifier } = useToast();
+  const charger = useCallback(() => Rappels.etat(), []);
+  const { donnees, chargement, erreur, recharger } = useApi(charger);
+  const [lien, setLien] = useState(null);
+  const [action, setAction] = useState(null); // 'generer' | 'desactiver' en attente de confirmation
+  const [envoi, setEnvoi] = useState(false);
+
+  const executer = async () => {
+    setEnvoi(true);
+    try {
+      if (action === 'generer') {
+        const { jeton } = await Rappels.generer();
+        setLien(urlApi(`/rappels/aujourdhui?jeton=${jeton}`));
+        notifier('Lien généré');
+      } else {
+        await Rappels.desactiver();
+        setLien(null);
+        notifier('Lien désactivé');
+      }
+      recharger();
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+    } finally {
+      setEnvoi(false);
+      setAction(null);
+    }
+  };
+
+  const copier = async () => {
+    try {
+      await navigator.clipboard.writeText(lien);
+      notifier('Lien copié');
+    } catch {
+      notifier('Copie impossible : sélectionnez le lien et copiez-le', 'erreur');
+    }
+  };
+
+  const actif = donnees?.actif;
+
+  return (
+    <>
+      <Carte
+        titre="Rappels iPhone"
+        actions={
+          actif && (
+            <span className="flex" style={{ gap: 4 }}>
+              <Bouton taille="petit" icone={RefreshCw} compact onClick={() => setAction('generer')}>Nouveau lien</Bouton>
+              <Bouton variante="danger" taille="petit" icone={Trash2} compact onClick={() => setAction('desactiver')}>Désactiver</Bouton>
+            </span>
+          )
+        }
+      >
+        {erreur && <Encart ton="erreur">{erreur}</Encart>}
+        {chargement && !donnees ? (
+          <Chargement />
+        ) : (
+          <div className="formulaire">
+            <p>
+              Un raccourci iOS lit chaque matin vos tâches du jour et en retard (contenus à publier, réceptions, livraisons,
+              objectifs) et les ajoute à l’app Rappels.
+            </p>
+            {lien ? (
+              <>
+                <Champ libelle="Lien du raccourci" aide="Ne sera plus affiché : copiez-le maintenant. Toute personne qui a ce lien voit vos tâches.">
+                  {(id) => <Saisie id={id} readOnly value={lien} onFocus={(e) => e.target.select()} />}
+                </Champ>
+                <div>
+                  <Bouton variante="principal" icone={Copy} onClick={copier}>Copier le lien</Bouton>
+                </div>
+              </>
+            ) : actif ? (
+              <Encart ton="succes">Un lien est actif. Pour le retrouver, générez-en un nouveau (l’ancien cessera de fonctionner).</Encart>
+            ) : (
+              <div>
+                <Bouton variante="principal" icone={Smartphone} onClick={() => setAction('generer')}>Générer mon lien</Bouton>
+              </div>
+            )}
+            <div>
+              <strong>Dans l’app Raccourcis de l’iPhone</strong>
+              <ol style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.6 }}>
+                <li>Automatisation → Nouvelle → <em>Heure de la journée</em> (ex. 7:00, tous les jours) → <em>Exécuter immédiatement</em>.</li>
+                <li><em>Obtenir le contenu de l’URL</em> : collez le lien.</li>
+                <li><em>Obtenir la valeur du dictionnaire</em> : clé <code>taches</code>.</li>
+                <li><em>Répéter avec chaque élément</em>, et dans la boucle :
+                  <ul style={{ paddingLeft: 18 }}>
+                    <li><em>Rechercher des rappels</em> où Titre est <code>titre</code> et Non terminé ;</li>
+                    <li><em>Si</em> le résultat <em>n’a aucune valeur</em> : <em>Ajouter un nouveau rappel</em> avec <code>titre</code>, échéance <code>echeance</code>, notes <code>notes</code>, URL <code>url</code>.</li>
+                  </ul>
+                </li>
+              </ol>
+            </div>
+          </div>
+        )}
+      </Carte>
+      <Confirmation
+        ouverte={action !== null}
+        titre={action === 'desactiver' ? 'Désactiver le lien ?' : actif ? 'Générer un nouveau lien ?' : 'Générer le lien ?'}
+        message={action === 'desactiver' ? 'Le raccourci ne recevra plus vos tâches.' : actif ? 'L’ancien lien cessera de fonctionner : pensez à mettre à jour le raccourci.' : 'Le lien ne sera affiché qu’une fois.'}
+        libelleConfirmer={action === 'desactiver' ? 'Désactiver' : 'Générer'}
+        ton={action === 'desactiver' ? 'danger' : 'principal'}
+        chargement={envoi}
+        onConfirmer={executer}
+        onAnnuler={() => setAction(null)}
+      />
+    </>
+  );
+}
+
 export function Parametres() {
   const [params, setParams] = useSearchParams();
   const section = SECTIONS.some((s) => s.cle === params.get('section')) ? params.get('section') : 'clients';
@@ -510,6 +621,7 @@ export function Parametres() {
             />
           )}
           {section === 'utilisateurs' && <SectionUtilisateurs />}
+          {section === 'rappels' && <SectionRappels />}
         </div>
       </div>
     </Page>

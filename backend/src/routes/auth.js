@@ -7,7 +7,7 @@ import { signer, authentifier } from '../middleware/auth.js';
 export const routeurAuth = Router();
 
 export function utilisateurPublic(u) {
-  const { motDePasse, ...reste } = u;
+  const { motDePasse, jetonRappels, ...reste } = u;
   return reste;
 }
 

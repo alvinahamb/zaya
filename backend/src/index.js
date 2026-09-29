@@ -27,6 +27,7 @@ import { routeurRecherche } from './routes/recherche.js';
 import { routeurApercu } from './routes/apercu.js';
 import { routeurObjectifs } from './routes/objectifs.js';
 import { routeurNotifications } from './routes/notifications.js';
+import { routeurRappels, routeurRappelsPublic } from './routes/rappels.js';
 
 const app = express();
 // En production, seul le front déployé peut appeler l'API ; en local, tout est ouvert
@@ -49,6 +50,8 @@ app.get('/api/health', async (req, res) => {
   res.json({ status: 'ok', base: now });
 });
 app.use('/api/auth', routeurAuth);
+// Raccourci iOS : authentifié par son propre jeton, avant la session
+app.use('/api/rappels', routeurRappelsPublic);
 
 // Tout le reste exige une session
 app.use('/api', authentifier);
@@ -70,6 +73,7 @@ app.use('/api/publications', routeurPublications);
 app.use('/api/stats', routeurStats);
 app.use('/api/objectifs', routeurObjectifs);
 app.use('/api/notifications', routeurNotifications);
+app.use('/api/rappels', routeurRappels);
 
 app.use('/api', (req, res) => res.status(404).json({ message: 'Route inconnue' }));
 app.use(gererErreurs);
