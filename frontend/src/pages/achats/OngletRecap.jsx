@@ -3,12 +3,18 @@ import { Carte, Indicateur } from '../../components/ui/Carte.jsx';
 
 const couleurMarge = (pct) => (pct === null || pct === undefined ? undefined : pct >= 0 ? 'var(--succes)' : 'var(--danger)');
 
-/** Six indicateurs du cahier des charges, plus le détail des montants qui les composent. */
+/** Indicateurs du cahier des charges, estimation avec le budget de communication, et détail des montants. */
 export function OngletRecap({ achat }) {
   const r = achat.recap;
   // Montants des marges en Ariary, calculés à partir des mêmes bases que les pourcentages du serveur
   const margeEstimeeAr = r.achatAvecFrais ? r.estimationVente - r.achatAvecFrais : null;
   const margeReelleAr = r.achatAvecFrais ? r.venteActuelle - r.sommeBoosts - r.achatAvecFrais : null;
+  // Communication prévue : le budget alloué, ou les boosts réels s'ils le dépassent déjà
+  const { budgetAr, depenseAr, resteAr } = achat.budget;
+  const communication = Math.max(budgetAr, r.sommeBoosts);
+  const margeBudgetAr = r.achatAvecFrais ? r.estimationVente - r.achatAvecFrais - communication : null;
+  const margeBudgetPct = r.achatAvecFrais ? (margeBudgetAr / r.achatAvecFrais) * 100 : null;
+  const depasse = r.sommeBoosts > budgetAr;
   return (
     <div className="colonne" style={{ gap: 20 }}>
       <div className="bandeau-recap">
@@ -28,6 +34,18 @@ export function OngletRecap({ achat }) {
           couleur={couleurMarge(r.margeReellePct)}
           sous={`${pourcentage(r.margeReellePct)} · Vente − boosts − achat avec frais`}
         />
+        <Indicateur
+          libelle="Budget de communication"
+          valeur={ariary(budgetAr)}
+          couleur={depasse ? 'var(--danger)' : undefined}
+          sous={budgetAr ? `Dépensé ${ariary(depenseAr)} · ${depasse ? `dépassé de ${ariary(-resteAr)}` : `reste ${ariary(resteAr)}`}` : 'Aucun budget alloué'}
+        />
+        <Indicateur
+          libelle="Marge estimée avec budget"
+          valeur={ariary(margeBudgetAr)}
+          couleur={couleurMarge(margeBudgetPct)}
+          sous={`${pourcentage(margeBudgetPct)} · Estimation − achat avec frais − ${depasse ? 'boosts (budget dépassé)' : 'budget'}`}
+        />
       </div>
 
       <Carte titre="Détail">
@@ -43,8 +61,15 @@ export function OngletRecap({ achat }) {
           <dd>{formatTaux(r.tauxEuro)}</dd>
           <dt>Frais de la commande</dt>
           <dd>{ariary(r.fraisAchat)}</dd>
+          <dt>Budget de communication alloué</dt>
+          <dd>{ariary(budgetAr)}</dd>
           <dt>Boosts et frais de boosts</dt>
           <dd>{ariary(r.sommeBoosts)}</dd>
+          <dt>Coût total estimé</dt>
+          <dd>
+            {ariary(r.achatAvecFrais + communication)}{' '}
+            <span className="tres-petit secondaire">(achat avec frais + {depasse ? 'boosts' : 'budget'})</span>
+          </dd>
           <dt>Articles achetés / vendus / restants</dt>
           <dd>{nombre(r.quantiteAchetee)} / {nombre(r.quantiteVendue)} / {nombre(r.stockRestant)}</dd>
         </dl>
