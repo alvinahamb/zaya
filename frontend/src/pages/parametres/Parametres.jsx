@@ -472,7 +472,7 @@ function SectionRappels() {
   const { notifier } = useToast();
   const charger = useCallback(() => Rappels.etat(), []);
   const { donnees, chargement, erreur, recharger } = useApi(charger);
-  const [lien, setLien] = useState(null);
+  const [jeton, setJeton] = useState(null); // affiché une seule fois, juste après la génération
   const [action, setAction] = useState(null); // 'generer' | 'desactiver' en attente de confirmation
   const [envoi, setEnvoi] = useState(false);
 
@@ -480,12 +480,11 @@ function SectionRappels() {
     setEnvoi(true);
     try {
       if (action === 'generer') {
-        const { jeton } = await Rappels.generer();
-        setLien(urlApi(`/rappels/aujourdhui?jeton=${jeton}`));
+        setJeton((await Rappels.generer()).jeton);
         notifier('Lien généré');
       } else {
         await Rappels.desactiver();
-        setLien(null);
+        setJeton(null);
         notifier('Lien désactivé');
       }
       recharger();
@@ -497,7 +496,7 @@ function SectionRappels() {
     }
   };
 
-  const copier = async () => {
+  const copier = async (lien) => {
     try {
       await navigator.clipboard.writeText(lien);
       notifier('Lien copié');
@@ -507,11 +506,15 @@ function SectionRappels() {
   };
 
   const actif = donnees?.actif;
+  const liens = jeton && [
+    { cle: 'rappels', libelle: 'Lien du raccourci Rappels', url: urlApi(`/rappels/aujourdhui?jeton=${jeton}`) },
+    { cle: 'calendrier', libelle: 'Lien du calendrier', url: urlApi(`/rappels/calendrier.ics?jeton=${jeton}`) },
+  ];
 
   return (
     <>
       <Carte
-        titre="Rappels iPhone"
+        titre="Rappels et Calendrier iPhone"
         actions={
           actif && (
             <span className="flex" style={{ gap: 4 }}>
@@ -527,17 +530,23 @@ function SectionRappels() {
         ) : (
           <div className="formulaire">
             <p>
-              Un raccourci iOS lit chaque matin vos tâches en retard et des deux prochaines semaines (contenus à publier, réceptions, livraisons,
-              objectifs) et les ajoute à l’app Rappels.
+              Vos tâches en retard et des deux prochaines semaines (contenus à publier, réceptions, livraisons, objectifs) arrivent
+              dans l’app Calendrier, tenues à jour automatiquement, et/ou dans l’app Rappels via un raccourci. Alerte 2 jours avant
+              l’échéance (ajoutez <code>&amp;avance=1</code> au lien pour 1 jour).
             </p>
-            {lien ? (
+            {liens ? (
               <>
-                <Champ libelle="Lien du raccourci" aide="Ne sera plus affiché : copiez-le maintenant. Toute personne qui a ce lien voit vos tâches.">
-                  {(id) => <Saisie id={id} readOnly value={lien} onFocus={(e) => e.target.select()} />}
-                </Champ>
-                <div>
-                  <Bouton variante="principal" icone={Copy} onClick={copier}>Copier le lien</Bouton>
-                </div>
+                {liens.map((l) => (
+                  <div key={l.cle} className="flex" style={{ gap: 8, alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <Champ libelle={l.libelle}>
+                        {(id) => <Saisie id={id} readOnly value={l.url} onFocus={(e) => e.target.select()} />}
+                      </Champ>
+                    </div>
+                    <Bouton icone={Copy} onClick={() => copier(l.url)} aria-label={`Copier : ${l.libelle}`} />
+                  </div>
+                ))}
+                <Encart ton="attention">Ces liens ne seront plus affichés : copiez-les maintenant. Toute personne qui les a voit vos tâches.</Encart>
               </>
             ) : actif ? (
               <Encart ton="succes">Un lien est actif. Pour le retrouver, générez-en un nouveau (l’ancien cessera de fonctionner).</Encart>
@@ -547,7 +556,15 @@ function SectionRappels() {
               </div>
             )}
             <div>
-              <strong>Dans l’app Raccourcis de l’iPhone</strong>
+              <strong>Calendrier (recommandé)</strong>
+              <ol style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.6 }}>
+                <li>Réglages → Calendrier → Comptes → Ajouter un compte → Autre → <em>Ajouter un calendrier avec abonnement</em>.</li>
+                <li>Collez le lien du calendrier, puis Suivant.</li>
+                <li>Désactivez <em>Supprimer les alertes</em>, sinon l’iPhone ignore les alertes, puis Enregistrer.</li>
+              </ol>
+            </div>
+            <div>
+              <strong>Rappels : dans l’app Raccourcis de l’iPhone</strong>
               <ol style={{ margin: '6px 0 0', paddingLeft: 20, lineHeight: 1.6 }}>
                 <li>Automatisation → Nouvelle → <em>Heure de la journée</em> (ex. 7:00, tous les jours) → <em>Exécuter immédiatement</em>.</li>
                 <li><em>Obtenir le contenu de l’URL</em> : collez le lien.</li>
@@ -555,7 +572,7 @@ function SectionRappels() {
                 <li><em>Répéter avec chaque élément</em>, et dans la boucle :
                   <ul style={{ paddingLeft: 18 }}>
                     <li><em>Rechercher des rappels</em> où Titre est <code>titre</code> et Non terminé ;</li>
-                    <li><em>Si</em> le résultat <em>n’a aucune valeur</em> : <em>Ajouter un nouveau rappel</em> avec <code>titre</code>, alerte <em>À une heure</em> <code>alerte</code> (2 jours avant l’échéance ; ajoutez <code>&amp;avance=1</code> au lien pour 1 jour), notes <code>notes</code>, URL <code>url</code>.</li>
+                    <li><em>Si</em> le résultat <em>n’a aucune valeur</em> : <em>Ajouter un nouveau rappel</em> avec <code>titre</code>, alerte <em>À une heure</em> <code>alerte</code>, notes <code>notes</code>, URL <code>url</code>.</li>
                   </ul>
                 </li>
               </ol>
