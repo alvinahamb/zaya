@@ -527,7 +527,7 @@ function SectionRappels() {
         ) : (
           <div className="formulaire">
             <p>
-              Un raccourci iOS lit chaque matin vos tâches du jour et en retard (contenus à publier, réceptions, livraisons,
+              Un raccourci iOS lit chaque matin vos tâches en retard et des deux prochaines semaines (contenus à publier, réceptions, livraisons,
               objectifs) et les ajoute à l’app Rappels.
             </p>
             {lien ? (
@@ -555,7 +555,7 @@ function SectionRappels() {
                 <li><em>Répéter avec chaque élément</em>, et dans la boucle :
                   <ul style={{ paddingLeft: 18 }}>
                     <li><em>Rechercher des rappels</em> où Titre est <code>titre</code> et Non terminé ;</li>
-                    <li><em>Si</em> le résultat <em>n’a aucune valeur</em> : <em>Ajouter un nouveau rappel</em> avec <code>titre</code>, échéance <code>echeance</code>, notes <code>notes</code>, URL <code>url</code>.</li>
+                    <li><em>Si</em> le résultat <em>n’a aucune valeur</em> : <em>Ajouter un nouveau rappel</em> avec <code>titre</code>, alerte <em>À une heure</em> <code>alerte</code> (2 jours avant l’échéance ; ajoutez <code>&amp;avance=1</code> au lien pour 1 jour), notes <code>notes</code>, URL <code>url</code>.</li>
                   </ul>
                 </li>
               </ol>
