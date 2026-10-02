@@ -47,15 +47,18 @@ test('réduction répartie au prorata des lignes', () => {
 });
 
 test("récapitulatif d'une commande", () => {
-  const vente = { reductionAr: 0, DetailVente: [{ quantite: 2, prixVenteAr: 90000 }] };
+  const vente = { statut: 'payee', reductionAr: 0, DetailVente: [{ quantite: 2, prixVenteAr: 90000 }] };
   vente.DetailVente[0].Vente = vente;
+  // Vente pas encore payée : réserve 1 article sans compter dans le CA
+  const reservee = { statut: 'en_livraison', reductionAr: 0, DetailVente: [{ quantite: 1, prixVenteAr: 90000 }] };
+  reservee.DetailVente[0].Vente = reservee;
   const achat = {
     somme: 100,
     sommeAr: 500000,
     Frais: [{ montantAr: 50000 }],
     Boost: [{ montantAr: 20000, Frais: [{ montantAr: 5000 }] }],
     DetailAchat: [
-      { quantite: 4, prix: 25, prixVenteAr: 90000, DetailVente: [vente.DetailVente[0]] },
+      { quantite: 4, prix: 25, prixVenteAr: 90000, DetailVente: [vente.DetailVente[0], reservee.DetailVente[0]] },
     ],
   };
   const r = recapAchat(achat);
@@ -66,7 +69,9 @@ test("récapitulatif d'une commande", () => {
   assert.equal(r.venteActuelle, 180000);
   assert.equal(arrondir(r.margeEstimeePct), arrondir(((360000 - 550000) / 550000) * 100));
   assert.equal(arrondir(r.margeReellePct), arrondir(((180000 - 25000 - 550000) / 550000) * 100));
-  assert.equal(r.stockRestant, 2);
+  assert.equal(r.quantiteVendue, 2);
+  assert.equal(r.quantiteReservee, 1);
+  assert.equal(r.stockRestant, 1);
 });
 
 test("statut d'une commande", () => {

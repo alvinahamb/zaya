@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Truck, Banknote, RotateCcw } from 'lucide-react';
 import { Ventes, messageErreur } from '../../services/api.js';
 import { useApi, useMediaQuery, REQUETE_MOBILE } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
@@ -14,7 +14,17 @@ import { Montant } from '../../components/ui/Montant.jsx';
 import { Confirmation } from '../../components/ui/Modale.jsx';
 import { Chargement, Encart, ImageProduit } from '../../components/ui/Divers.jsx';
 import { SectionLivraison } from './SectionLivraison.jsx';
-import { BadgeStatutLivraison } from '../../components/ui/Badge.jsx';
+import { BadgeStatutLivraison, BadgeStatutVente } from '../../components/ui/Badge.jsx';
+
+/** Étapes suivantes d'une vente : créée → en livraison → payée (on peut aussi encaisser directement). */
+const ETAPES = {
+  creee: [
+    { statut: 'en_livraison', libelle: 'Mettre en livraison', icone: Truck },
+    { statut: 'payee', libelle: 'Marquer payée', icone: Banknote, principal: true },
+  ],
+  en_livraison: [{ statut: 'payee', libelle: 'Marquer payée', icone: Banknote, principal: true }],
+  payee: [{ statut: 'en_livraison', libelle: 'Annuler le paiement', icone: RotateCcw }],
+};
 
 /** Article vendu, version mobile : visuel, produit, quantité × prix et net. */
 function ArticleVendu({ ligne: l, avecReduction }) {
@@ -47,6 +57,20 @@ export function FicheVente() {
   const { donnees: vente, chargement, erreur, recharger } = useApi(charger);
   const [suppression, setSuppression] = useState(false);
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+  const [changement, setChangement] = useState(null);
+
+  const changerStatut = async (statut) => {
+    setChangement(statut);
+    try {
+      await Ventes.changerStatut(vente.id, statut);
+      notifier(statut === 'payee' ? 'Vente payée : comptée dans le chiffre d’affaires' : 'Statut mis à jour');
+      recharger();
+    } catch (err) {
+      notifier(messageErreur(err), 'erreur');
+    } finally {
+      setChangement(null);
+    }
+  };
 
   const supprimer = async () => {
     setSuppressionEnCours(true);
@@ -92,6 +116,7 @@ export function FicheVente() {
       titre={vente.nom || `Vente n° ${vente.id}`}
       badge={
         <>
+          <BadgeStatutVente statut={vente.statut} />
           {(vente.reseaux ?? []).map((r) => <Badge key={r.id} ton="info">{r.nom}</Badge>)}
           {vente.livraison && <BadgeStatutLivraison statut={vente.livraison.statut} />}
         </>
@@ -99,11 +124,21 @@ export function FicheVente() {
       sousTitre={`${dateCourte(vente.dateVente)} · ${nombre(vente.nbArticles)} article${vente.nbArticles > 1 ? 's' : ''}${vente.client ? ` · ${vente.client.nom}${vente.client.telephone ? ` (${vente.client.telephone})` : ''}` : ' · client anonyme'}`}
       actions={
         <>
+          {(ETAPES[vente.statut] ?? []).map((e) => (
+            <Bouton key={e.statut} variante={e.principal ? 'principal' : 'secondaire'} icone={e.icone} compact chargement={changement === e.statut} disabled={changement !== null} onClick={() => changerStatut(e.statut)}>
+              {e.libelle}
+            </Bouton>
+          ))}
           <BoutonLien icone={Pencil} compact to={`/ventes/${vente.id}/modifier`}>Modifier</BoutonLien>
           <Bouton variante="danger" icone={Trash2} onClick={() => setSuppression(true)} aria-label="Supprimer la vente" />
         </>
       }
     >
+      {vente.statut !== 'payee' && (
+        <div className="espace-bas">
+          <Encart ton="attention">Pas encore payée : cette vente ne compte pas dans le chiffre d’affaires, mais ses articles sont réservés dans le stock.</Encart>
+        </div>
+      )}
       <Carte nu className="espace-bas">
         {mobile ? (
           <div className="liste-cartes">

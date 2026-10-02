@@ -4,7 +4,7 @@ import { Plus, Trash2, Search, Save, Package, UserPlus } from 'lucide-react';
 import { Ventes, Reseaux, Achats, Clients } from '../../services/api.js';
 import { useApi, useFermerDehors, useFormulaire } from '../../lib/hooks.js';
 import { useToast } from '../../contexts/ToastContext.jsx';
-import { ariary, euro, nombre, aujourdhuiISO, versInputDate, dateCourte } from '../../lib/format.js';
+import { ariary, euro, nombre, aujourdhuiISO, versInputDate, dateCourte, LIBELLES_STATUT_VENTE } from '../../lib/format.js';
 import { Page } from '../../components/layout/Page.jsx';
 import { Carte } from '../../components/ui/Carte.jsx';
 import { Bouton } from '../../components/ui/Bouton.jsx';
@@ -80,6 +80,7 @@ const depuisVente = (vente) => ({
   idClient: vente.idClient ? String(vente.idClient) : '',
   dateVente: versInputDate(vente.dateVente),
   reductionAr: Number(vente.reductionAr) ? vente.reductionAr : '',
+  statut: vente.statut,
 });
 
 export function FormulaireVente() {
@@ -98,7 +99,7 @@ export function FormulaireVente() {
   const { donnees: disponibles, chargement: chargementDisponibles } = useApi(chargerDisponibles);
   const { donnees: vente, chargement: chargementVente, erreur: erreurVente } = useApi(chargerVente);
 
-  const f = useFormulaire({ nom: '', idReseaux: [], idClient: '', dateVente: aujourdhuiISO(), reductionAr: '' });
+  const f = useFormulaire({ nom: '', idReseaux: [], idClient: '', dateVente: aujourdhuiISO(), reductionAr: '', statut: 'creee' });
   const [lignes, setLignes] = useState([ligneVide()]);
   const [initialise, setInitialise] = useState(false);
 
@@ -186,6 +187,9 @@ export function FormulaireVente() {
             </Champ>
             <Champ libelle="Date" requis>
               {(idc) => <Saisie id={idc} name="dateVente" type="date" required value={f.valeurs.dateVente} onChange={f.surChangement} />}
+            </Champ>
+            <Champ libelle="Statut" aide="Comptée dans le chiffre d'affaires une fois payée">
+              {(idc) => <Selection id={idc} name="statut" value={f.valeurs.statut} onChange={f.surChangement} options={Object.entries(LIBELLES_STATUT_VENTE).map(([valeur, libelle]) => ({ valeur, libelle }))} />}
             </Champ>
             <Champ libelle="Libellé" aide="Facultatif">
               {(idc) => <Saisie id={idc} name="nom" value={f.valeurs.nom} onChange={f.surChangement} placeholder="Ex. Commande Instagram du 20/09" />}

@@ -124,7 +124,11 @@ export const Budgets = {
   supprimer: (id) => donnees(api.delete(`/budgets/${id}`)),
 };
 
-export const Ventes = crud('/ventes');
+export const Ventes = {
+  ...crud('/ventes'),
+  // creee | en_livraison | payee
+  changerStatut: (id, statut) => donnees(api.patch(`/ventes/${id}/statut`, { statut })),
+};
 
 export const Clients = crud('/clients');
 

@@ -219,6 +219,8 @@ model Vente {
   dateVente    DateTime      @default(dbgenerated("CURRENT_DATE")) @db.Date
   reductionAr  Decimal       @default(0) @db.Decimal(14, 2)
   sommeAr      Decimal       @default(0) @db.Decimal(14, 2)
+  /// creee → en_livraison → payee : seule une vente payée compte dans le CA
+  statut       String        @default("creee") @db.VarChar(20)
   dateCreation DateTime      @default(now()) @db.Timestamp(6)
   DetailVente  DetailVente[]
   Livraison    Livraison?
@@ -227,6 +229,7 @@ model Vente {
 
   @@index([dateVente], map: "idxVenteDate")
   @@index([idClient], map: "idxVenteClient")
+  @@index([statut], map: "idxVenteStatut")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

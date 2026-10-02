@@ -74,8 +74,12 @@ export function coutLigneVente(ligneVente, detailAchat, achat) {
   return Number(detailAchat.prix) * taux * Number(ligneVente.quantite);
 }
 
+/** Une vente ne compte comme vendue (CA, quantités vendues) qu'une fois payée. */
+export const estPayee = (vente) => vente?.statut === 'payee';
+
 /**
- * Récapitulatif d'une commande.
+ * Récapitulatif d'une commande : vente actuelle et quantité vendue ne
+ * retiennent que les ventes payées.
  * `achat` doit inclure DetailAchat (avec DetailVente → Vente → DetailVente),
  * Frais et Boost (avec Frais).
  */
@@ -95,15 +99,17 @@ export function recapAchat(achat) {
     somme(boosts, 'montantAr') + boosts.reduce((s, b) => s + somme(b.Frais ?? [], 'montantAr'), 0);
 
   const venteActuelle = lignes.reduce(
-    (s, l) => s + (l.DetailVente ?? []).reduce((t, dv) => t + venteNette(dv, dv.Vente), 0),
+    (s, l) => s + (l.DetailVente ?? []).filter((dv) => estPayee(dv.Vente)).reduce((t, dv) => t + venteNette(dv, dv.Vente), 0),
     0,
   );
 
   const quantiteAchetee = somme(lignes, 'quantite');
   const quantiteVendue = lignes.reduce(
-    (s, l) => s + (l.DetailVente ?? []).reduce((t, dv) => t + Number(dv.quantite), 0),
+    (s, l) => s + (l.DetailVente ?? []).filter((dv) => estPayee(dv.Vente)).reduce((t, dv) => t + Number(dv.quantite), 0),
     0,
   );
+  // Les articles des ventes pas encore payées sont réservés : ils sortent du stock
+  const quantiteSortie = lignes.reduce((s, l) => s + Number(l.quantite) - stockRestant(l), 0);
 
   const margeEstimeePct = achatAvecFrais
     ? ((estimationVente - achatAvecFrais) / achatAvecFrais) * 100
@@ -124,7 +130,8 @@ export function recapAchat(achat) {
     margeReellePct,
     quantiteAchetee,
     quantiteVendue,
-    stockRestant: quantiteAchetee - quantiteVendue,
+    quantiteReservee: quantiteSortie - quantiteVendue,
+    stockRestant: quantiteAchetee - quantiteSortie,
     tauxEuro: tauxEuro(achat.somme, achat.sommeAr),
   };
 }

@@ -7,7 +7,7 @@ import { venteNette, coutLigneVente, arrondir } from '../lib/calculs.js';
 export const routeurStats = Router();
 
 /**
- * Statistiques de vente sur une période, par produit, catégorie et réseau.
+ * Statistiques des ventes payées sur une période, par produit, catégorie et réseau.
  * Jointures : DetailVente → DetailAchat → Produit → Categorie, et Vente → Reseau.
  * Le CA est net de réduction (répartie au prorata), le coût est le prix d'achat
  * en Ariary de la ligne de commande d'origine (prix € × taux de sa commande).
@@ -17,7 +17,7 @@ routeurStats.get('/', async (req, res) => {
   const du = req.query.du ? jour(date(req.query.du, 'Date de début')) : ajouterJours(au, -365);
 
   const lignes = await prisma.detailVente.findMany({
-    where: { Vente: { dateVente: { gte: new Date(du), lte: new Date(au) } } },
+    where: { Vente: { statut: 'payee', dateVente: { gte: new Date(du), lte: new Date(au) } } },
     include: {
       Vente: { include: { DetailVente: true, VenteReseau: { include: { Reseau: true } } } },
       DetailAchat: {

@@ -145,6 +145,13 @@ export const LIBELLES_STATUT_LIVRAISON = {
   annulee: 'Annulée',
 };
 
+/** Une vente ne compte dans le chiffre d'affaires qu'une fois payée. */
+export const LIBELLES_STATUT_VENTE = {
+  creee: 'Créée',
+  en_livraison: 'En livraison',
+  payee: 'Payée',
+};
+
 export const LIBELLES_STATUT_OBJECTIF = {
   en_cours: 'En cours',
   atteint: 'Atteint',

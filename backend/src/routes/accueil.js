@@ -53,7 +53,7 @@ export async function calculerAccueil(idUtilisateur) {
       orderBy: { dateArriveeEstimee: 'asc' },
     }),
     prisma.vente.findMany({
-      where: { dateVente: { gte: debutMois } },
+      where: { statut: 'payee', dateVente: { gte: debutMois } },
       include: { DetailVente: true },
     }),
     prisma.livraison.findMany({

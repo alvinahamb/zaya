@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { Receipt, ArrowRight } from 'lucide-react';
 import { ariary, dateCourte, nombre } from '../../lib/format.js';
 import { Carte } from '../../components/ui/Carte.jsx';
-import { Badge } from '../../components/ui/Badge.jsx';
+import { Badge, BadgeStatutVente } from '../../components/ui/Badge.jsx';
 import { EtatVide } from '../../components/ui/Divers.jsx';
 import { BoutonLien } from '../../components/ui/Bouton.jsx';
 
@@ -31,6 +31,7 @@ export function OngletVentes({ achat }) {
                     <Link to={`/ventes/${v.id}`} className="element__titre" style={{ color: 'inherit' }}>
                       {v.nom || `Vente n° ${v.id}`}
                     </Link>
+                    <BadgeStatutVente statut={v.statut} />
                     {(v.reseaux ?? []).map((nom) => <Badge key={nom} ton="info">{nom}</Badge>)}
                   </div>
                   <div className="element__meta">{dateCourte(v.dateVente)}</div>

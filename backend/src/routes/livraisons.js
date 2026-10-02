@@ -25,6 +25,12 @@ function horodatage(statut, existant) {
   return null;
 }
 
+/** Livraison partie : la vente encore « créée » passe « en livraison » (jamais en arrière). */
+async function suivreVente(idVente, statut) {
+  if (statut !== 'en_cours') return;
+  await prisma.vente.updateMany({ where: { id: idVente, statut: 'creee' }, data: { statut: 'en_livraison' } });
+}
+
 async function lireCorps(corps = {}, { creation = false } = {}) {
   const texte = (v) => (v ? String(v).trim() : null);
   const donnees = {
@@ -87,6 +93,7 @@ routeurLivraisons.post('/', async (req, res) => {
   const cree = await prisma.livraison.create({
     data: { ...donnees, dateHeureLivree: horodatage(donnees.statut, null) },
   });
+  await suivreVente(cree.idVente, donnees.statut);
   res.status(201).json(await charger(cree.id));
 });
 
@@ -98,6 +105,7 @@ routeurLivraisons.put('/:id', async (req, res) => {
     where: { id },
     data: { ...donnees, dateHeureLivree: horodatage(donnees.statut, existante.dateHeureLivree) },
   });
+  await suivreVente(existante.idVente, donnees.statut);
   res.json(await charger(id));
 });
 
@@ -109,6 +117,7 @@ routeurLivraisons.patch('/:id/statut', async (req, res) => {
     where: { id },
     data: { statut, dateHeureLivree: horodatage(statut, existante.dateHeureLivree) },
   });
+  await suivreVente(existante.idVente, statut);
   res.json(await charger(id));
 });
 

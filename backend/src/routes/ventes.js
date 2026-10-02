@@ -5,6 +5,18 @@ import { arrondir, stockRestant, venteNette } from '../lib/calculs.js';
 
 export const routeurVentes = Router();
 
+/**
+ * creee → en_livraison → payee. Seule une vente payée compte comme vendue
+ * (CA, statistiques, récap) ; avant, ses articles sont réservés dans le stock.
+ */
+export const STATUTS_VENTE = ['creee', 'en_livraison', 'payee'];
+
+function lireStatut(valeur, defaut) {
+  const statut = valeur ?? defaut;
+  exiger(STATUTS_VENTE.includes(statut), 'Statut de vente inconnu');
+  return statut;
+}
+
 const inclusionVente = {
   VenteReseau: { include: { Reseau: true } },
   Client: { select: { id: true, nom: true, telephone: true, adresse: true } },
@@ -46,7 +58,7 @@ function enrichirVente(vente) {
   };
 }
 
-function lireEntete(corps = {}) {
+function lireEntete(corps = {}, statutParDefaut = 'creee') {
   const dateVente = date(corps.dateVente, 'Date de vente');
   exiger(dateVente, 'La date de vente est obligatoire');
   return {
@@ -55,6 +67,7 @@ function lireEntete(corps = {}) {
       idClient: corps.idClient ? entierId(corps.idClient, 'Client') : null,
       dateVente,
       reductionAr: arrondir(nombre(corps.reductionAr, { min: 0, nom: 'Réduction' }) ?? 0),
+      statut: lireStatut(corps.statut, statutParDefaut),
     },
     idReseaux: listeIds(corps.idReseaux, { nom: 'Réseau', minimum: 1 }),
   };
@@ -109,8 +122,9 @@ async function chargerVente(id) {
 }
 
 routeurVentes.get('/', async (req, res) => {
-  const { du, au, reseau, client } = req.query;
+  const { du, au, reseau, client, statut } = req.query;
   const where = {};
+  if (statut) where.statut = lireStatut(String(statut));
   if (client) where.idClient = entierId(client, 'Client');
   if (du || au) {
     where.dateVente = {};
@@ -149,8 +163,8 @@ routeurVentes.post('/', async (req, res) => {
 
 routeurVentes.put('/:id', async (req, res) => {
   const id = entierId(req.params.id);
-  await chargerVente(id);
-  const { donnees: entete, idReseaux } = lireEntete(req.body);
+  const existante = await chargerVente(id);
+  const { donnees: entete, idReseaux } = lireEntete(req.body, existante.statut);
   await prisma.$transaction(async (tx) => {
     const lignes = await lireLignes(req.body?.lignes, tx, id);
     await tx.detailVente.deleteMany({ where: { idVente: id } });
@@ -164,6 +178,13 @@ routeurVentes.put('/:id', async (req, res) => {
       },
     });
   });
+  res.json(enrichirVente(await chargerVente(id)));
+});
+
+routeurVentes.patch('/:id/statut', async (req, res) => {
+  const id = entierId(req.params.id);
+  await chargerVente(id);
+  await prisma.vente.update({ where: { id }, data: { statut: lireStatut(req.body?.statut) } });
   res.json(enrichirVente(await chargerVente(id)));
 });
 

@@ -100,6 +100,7 @@ function enrichirAchat(achat, { complet = true } = {}) {
           id: v.id,
           nom: v.nom,
           dateVente: v.dateVente,
+          statut: v.statut,
           reseaux: (v.VenteReseau ?? []).map((x) => x.Reseau.nom),
           lignes: [],
           totalAr: 0,

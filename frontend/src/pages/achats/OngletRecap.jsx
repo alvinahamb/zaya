@@ -70,8 +70,8 @@ export function OngletRecap({ achat }) {
             {ariary(r.achatAvecFrais + communication)}{' '}
             <span className="tres-petit secondaire">(achat avec frais + {depasse ? 'boosts' : 'budget'})</span>
           </dd>
-          <dt>Articles achetés / vendus / restants</dt>
-          <dd>{nombre(r.quantiteAchetee)} / {nombre(r.quantiteVendue)} / {nombre(r.stockRestant)}</dd>
+          <dt>Articles achetés / vendus / réservés / restants</dt>
+          <dd>{nombre(r.quantiteAchetee)} / {nombre(r.quantiteVendue)} / {nombre(r.quantiteReservee ?? 0)} / {nombre(r.stockRestant)}</dd>
         </dl>
       </Carte>
     </div>
